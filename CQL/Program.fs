@@ -17,30 +17,21 @@ let eval query =
             let columns = lines.Head.Split [|';'|] |> Array.toList
             let contentRows = lines.Tail |> List.map (fun row -> row.Split [|';'|] |> Array.toList)
             Table.create None columns contentRows
+        | SubQuery select -> evalSelectQuery select
 
-        | SubQuery select ->
-            evalSelectQuery select
-
-
-        
     let evalQuery query =
         match query with
-        | Select(cols,from,where) ->
-            SelectQuery(cols,from,where)
-            |> evalSelectQuery
-            |> Table.printTable
+        | Select(cols,from,where) -> SelectQuery(cols,from,where) |> evalSelectQuery |> Table.printTable
         | Create(name, select) ->
             evalSelectQuery select |> Table.saveTableAsCsv name |> ignore
             printfn "table %A saved" name |> ignore
 
     evalQuery query
         
-
 [<EntryPoint>]
 let main argv =
-    //let input ="select 'name', 'adress' from 'people.csv' where 'id' = 3 where 'name' = \"bert\""
-    let input = "select '*' from 'person.txt'"
 
+    let input = "select '*' from 'person.txt'"
     match (run Parser.queryType input) with
     | Success(result, _, _)  ->
         printfn "Success: %A" (result)
