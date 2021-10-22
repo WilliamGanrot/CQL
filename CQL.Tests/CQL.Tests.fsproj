@@ -26,8 +26,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CQL\CQL.fsproj" />
     <PackageReference Include="FParsec" Version="1.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CQL.Library\CQL.Library.fsproj" />
   </ItemGroup>
 
 </Project>
