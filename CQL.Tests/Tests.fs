@@ -17,6 +17,7 @@ open FParsec
 [<InlineData("select '*' from ( select 'name', 'age' from 'name.csv' where 'age' = 20)")>]
 [<InlineData("select '*' from 'people.csv' inner join 'table' 'a' = 'v'")>]
 [<InlineData("select '*' from ( select '*' from (select 'name' from 'table') )")>]
+[<InlineData("select '*' from ( select '*' from (select 'name' from 'table' left join 'x' 'wef' = 24) )")>]
 let ``select query happy cases`` (query) =
 
     match (run Parser.selectQueryWitheof query) with
