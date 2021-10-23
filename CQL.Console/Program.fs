@@ -7,7 +7,7 @@ open CQL.Interpreter
 [<EntryPoint>]
 let main argv =
     let input = "select '*' from 'person.txt'"
-    match (run Parser.queryType "select '*' from ( select '*' from (select 'name' from 'table') )") with
+    match (run Parser.parse "  create   'new.csv'(select   '*' from 'people.csv' as 'v') as 'kart'") with
     | Success(result, _, _)  ->
         printfn "Success: %A" (result)
         //Interpreter.eval result

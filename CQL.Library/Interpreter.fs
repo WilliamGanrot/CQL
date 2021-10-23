@@ -14,18 +14,18 @@ module Interpreter =
     
         and getTable from =
             match from with
-            | TableName filename -> 
+            | TableName (filename, alias) -> 
                 let lines = File.ReadAllLines filename |> Array.toList
                 let columns = lines.Head.Split [|';'|] |> Array.toList
                 let contentRows = lines.Tail |> List.map (fun row -> row.Split [|';'|] |> Array.toList)
                 Table.create None columns contentRows
-            | SubQuery select -> evalSelectQuery select
+            | SubQuery (select,alias) -> evalSelectQuery select
     
         let evalQuery query =
             match query with
             | Select(cols,from,joins,where) -> SelectQuery(cols,from,joins,where) |> evalSelectQuery |> Table.printTable
-            | Create(name, select) ->
-                evalSelectQuery select |> Table.saveTableAsCsv name |> ignore
+            | Create(name, from) ->
+                getTable from |> Table.saveTableAsCsv name |> ignore
                 printfn "table %A saved" name |> ignore
     
         evalQuery query

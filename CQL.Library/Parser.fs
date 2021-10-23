@@ -19,8 +19,8 @@ module ParserDomain =
         | All
 
     type From =
-        | TableName of name: string //* alias: string Option
-        | SubQuery of subQuery: SelectQuery //* alias: string Option
+        | TableName of name: string * alias: string Option
+        | SubQuery of subQuery: SelectQuery * alias: string Option
 
      and InnerJoin = From * ComparisonExpression list
      and LeftJoin = From * ComparisonExpression list
@@ -29,7 +29,7 @@ module ParserDomain =
          | Left of LeftJoin
 
     and SelectQuery = Column List * From * Join list * ComparisonExpression list
-    and CreateQuery = string * SelectQuery
+    and CreateQuery = string * From
 
     and Query =
         | Select of SelectQuery
@@ -71,8 +71,8 @@ module Parser =
     let manySelectParameter = 
         let seperator = pstring "," .>> spaces 
         sepBy1 selectParameter seperator
-    let create = spaces >>. pstring "create" >>. spaces1 >>. singleQoutedString .>> spaces 
-    let select = spaces >>. pstring "select" >>. spaces1 >>. manySelectParameter .>> spaces
+    let create = spaces >>. pstring "create" >>. spaces1 >>. singleQoutedString .>> spaces
+    let select = spaces >>. pstring "select" >>. spaces1 >>. manySelectParameter .>> spaces1
 
     let innerjoin = pstring "inner join" >>. spaces1 >>. fromType .>> spaces .>>. manyEqualityExpression .>> spaces |>> InnerJoin
     let leftjoin = pstring "left join" >>. spaces1 >>. fromType .>> spaces .>>. manyEqualityExpression .>> spaces |>> LeftJoin
@@ -87,24 +87,28 @@ module Parser =
         | Some l -> l
         | None -> [])
 
-
-    let from = pstring "from" .>> spaces1 >>. fromType .>> spaces
+    let alias = opt(pstring "as" >>. spaces1 >>. singleQoutedString)
+    let from = pstring "from" .>> spaces1 >>. fromType .>> spaces 
+    let tableName = singleQoutedString .>>. (spaces >>. alias)
 
     let selectQuery = select .>>. from .>>. joins .>>. wheres .>> spaces |>> fun(((x,y),z),a) -> SelectQuery(x,y,z,a)
     let selectQueryWitheof = selectQuery .>> eof 
-    let subSelectQuery = (between (pstring "(") (pstring ")") (selectQuery .>> spaces)) .>> spaces
+    let subSelectQuery = ((between (pstring "(") (pstring ")") (selectQuery .>> spaces)) .>> spaces) .>>. alias
 
-    let createQuery = create .>>. subSelectQuery .>> spaces |>> fun (x,y) -> CreateQuery(x,y)
+    let createQuery = create .>>. fromType .>> spaces |>> fun (filename,(from)) -> CreateQuery(filename,from)
 
     do queryTypeRef := choice [selectQueryWitheof |>> Select
                                createQuery |>> Create]
 
-    do fromTypeRef := choice [singleQoutedString |>> TableName
+    do fromTypeRef := choice [tableName |>> TableName
                               subSelectQuery |>> SubQuery]
 
     do joinTypeRef := choice [innerjoin |>> Inner
                               leftjoin |>> Left]
 
+
     opp.TermParser <- choice [numberExpression;stringExpression;columnExpression]
     opp.AddOperator <| InfixOperator("=", spaces, 1, Associativity.None, fun x y -> Binary(Equal, x, y))
     opp.AddOperator <| InfixOperator("<>", spaces, 1, Associativity.None, fun x y -> Binary(NotEqual, x, y))
+
+    let parse = spaces >>. queryType
