@@ -40,6 +40,7 @@ module ParserDomain =
 module Parser =
     open FParsec
 
+    let alphabet = "abcdefghijklmnopqrstuvwxyz"
     let keywords =
         ["select"
          "from"
@@ -48,11 +49,7 @@ module Parser =
          "create"
          "left join"
          "inner join"]
-
-    //let pKeyword =
-    //   (many1Satisfy isLower .>> nonAlphaNumeric) // [a-z]+
-    //   >>= (fun s -> if keyWordSet.Contains(s) then (preturn x) else fail "not a keyword")
-
+    
     let queryType, queryTypeRef = createParserForwardedToRef<Query, unit>()
     let fromType, fromTypeRef = createParserForwardedToRef<From, unit>()
     let joinType, joinTypeRef = createParserForwardedToRef<Join, unit>()
@@ -63,7 +60,7 @@ module Parser =
         let seperator = pstring "&&" .>> spaces 
         sepBy1 equalityExpression seperator
 
-    let alphastring : Parser<_,unit> = many1Chars (anyOf "abcdefghijklmnopqrstuvwxyz")
+    let alphastring : Parser<_,unit> = many1Chars (anyOf alphabet)
     let manyCharsBetween popen pclose pchar = popen >>? manyCharsTill pchar pclose
     let anyStringBetween popen pclose = manyCharsBetween popen pclose anyChar
     let anyStringBetweenStrings s1 s2 = anyStringBetween (pstring s1) (pstring s2)
@@ -75,13 +72,7 @@ module Parser =
     let floatlitteral = pfloat .>> spaces |>> NumberExpression
 
     let all = stringReturn "*" All
-    let specificColumn =
-        let colTargetWithoutDot = spaces |>> fun _ -> None
-        let colTargetWithDot = (pstring "." >>. alphastring) |>> Some
-        alphastring .>>. (colTargetWithDot <|> colTargetWithoutDot) |>> (fun (h,t) ->
-            match h,t with
-            | h,None -> (None,h) |> SpecificColumn
-            | h,Some(t) -> (Some(h),t) |> SpecificColumn)
+    let specificColumn = opt(attempt (manyCharsTill (anyOf alphabet) (pstring "."))) .>>. alphastring
 
     let numberExpression = floatlitteral <|> intlitteral 
     let stringExpression = doubleQoutedString |>> StringExpression .>> spaces
