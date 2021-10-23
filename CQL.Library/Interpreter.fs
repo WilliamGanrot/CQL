@@ -18,9 +18,12 @@ module Interpreter =
                 let lines = File.ReadAllLines filename |> Array.toList
                 let columns = lines.Head.Split [|';'|] |> Array.toList
                 let contentRows = lines.Tail |> List.map (fun row -> row.Split [|';'|] |> Array.toList)
-                Table.create None columns contentRows
-            | SubQuery (select,alias) -> evalSelectQuery select
-    
+                Table.create alias columns contentRows
+            | SubQuery (select,alias) ->
+                let table = evalSelectQuery select
+                let newheaders = table.headers |> List.map (fun (_,h) -> (alias,h) |> SpecificColumn)
+                {table with headers = newheaders; alias = alias}
+
         let evalQuery query =
             match query with
             | Select(cols,from,joins,where) -> SelectQuery(cols,from,joins,where) |> evalSelectQuery |> Table.printTable

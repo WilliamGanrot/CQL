@@ -16,20 +16,33 @@ module Table =
          headers = headers |> List.map(fun s -> (SpecificColumn (alias,s)));
          contentRows = rows}
 
-    let getheaderIndex table columnName =
-        table.headers 
-        |> List.indexed
-        |> List.filter(fun (_, v) -> v = columnName)
-        |> List.map(fun(i,_) -> i)
-        |> List.head
+    let getheaderIndex table colToFind =
+
+        let indexedHeaders = table.headers |> List.indexed
+
+        let validateFoundMatchCols name foundColumnsWithIndexes =
+            match foundColumnsWithIndexes with
+            | [] -> failwith ("could not find column " + name)
+            | (index, column)::[] -> index
+            | _ -> failwith ("ambigious column name " + name)
+
+        match colToFind with
+        | (Some alias), name ->
+            indexedHeaders
+            |> List.filter (fun (i,(a,n)) -> a = Some(alias) && n = name)
+            |> validateFoundMatchCols (alias + "." + name)
+        | None, name ->
+            indexedHeaders
+            |> List.filter (fun (i,(a,n)) -> n = name)
+            |> validateFoundMatchCols (name)
 
     let getSubTable table (cols: Column List) =
-        
+
         let stringcols =
             [for col in cols do
                match col with
                 | Specifict (alias,name) -> (SpecificColumn (alias,name))
-                | All(_)-> yield! table.headers ]
+                | All -> yield! table.headers ]
 
         let rows =
             [for row in table.contentRows do
@@ -40,7 +53,7 @@ module Table =
                         let index = getheaderIndex table (SpecificColumn (alias,name))
                         row.[index] ]]
                  
-        {alias = None; contentRows = rows; headers = stringcols}
+        {alias = table.alias; contentRows = rows; headers = stringcols}
 
     let tableToCsvRows table =
         let s = table.headers |> List.map (fun (a,n) -> n)
