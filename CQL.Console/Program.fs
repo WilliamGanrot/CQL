@@ -8,7 +8,7 @@ open CQL.Interpreter
 let main argv =
 
     let q = "select 'p.age' from (select '*' from 'person.txt') as 'p'"
-    match (run Parser.queryType "select '*' from 'person.txt'") with
+    match (run Parser.queryType "select '*' from 'person.txt' where \"x\"") with
     | Success(result, _, _)  ->
         printfn "Success: %A" (result)
         Interpreter.eval result

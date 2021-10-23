@@ -10,12 +10,11 @@ module ParserDomain =
 
     type SpecificColumn = string Option * string
     type ComparisonExpression =
-        | ColumnExpression of SpecificColumn //uncouted string
+        | ColumnExpression of SpecificColumn
         | NumberExpression of float
-        | StringExpression of string //quoted string
+        | StringExpression of string
         | Binary of EqualityOperator * ComparisonExpression * ComparisonExpression
 
-    
     type Column =
         | Specifict of SpecificColumn
         | All
