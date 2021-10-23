@@ -8,16 +8,17 @@ module ParserDomain =
         | Equal
         | NotEqual
 
+    type SpecificColumn = string Option * string
     type ComparisonExpression =
-        | ColumnExpression of string //uncouted string
+        | ColumnExpression of SpecificColumn //uncouted string
         | NumberExpression of float
         | StringExpression of string //quoted string
         | Binary of EqualityOperator * ComparisonExpression * ComparisonExpression
 
-    type SpecificColumn = string Option * string
+    
     type Column =
         | Specifict of SpecificColumn
-        | All of string
+        | All
 
     type From =
         | TableName of name: string * alias: string Option
@@ -68,40 +69,30 @@ module Parser =
     let anyStringBetweenStrings s1 s2 = anyStringBetween (pstring s1) (pstring s2)
     let singleQoutedString = anyStringBetweenStrings "'" "'"
     let doubleQoutedString = anyStringBetweenStrings "\"" "\""
+    let betweenString s1 s2 p = between (pstring s1) (pstring s2) p
 
     let intlitteral = pint32 .>> spaces |>> (fun i -> (float i)) |>> NumberExpression
     let floatlitteral = pfloat .>> spaces |>> NumberExpression
 
+    let all = stringReturn "*" All
+    let specificColumn =
+        let colTargetWithoutDot = spaces |>> fun _ -> None
+        let colTargetWithDot = (pstring "." >>. alphastring) |>> Some
+        alphastring .>>. (colTargetWithDot <|> colTargetWithoutDot) |>> (fun (h,t) ->
+            match h,t with
+            | h,None -> (None,h) |> SpecificColumn
+            | h,Some(t) -> (Some(h),t) |> SpecificColumn)
+
     let numberExpression = floatlitteral <|> intlitteral 
     let stringExpression = doubleQoutedString |>> StringExpression .>> spaces
-    let columnExpression = singleQoutedString |>> ColumnExpression .>> spaces
+    let columnExpression = betweenString "'" "'" specificColumn |>> ColumnExpression .>> spaces
 
-    let columnTarget =
-
-        let all = (pstringCI "*" |>> All)
-
-        let colTargetWithoutDot : Parser<string Option,unit> = spaces |>> fun _ -> None
-        let colTargetWithDot = (pstring "." >>. alphastring) |>> Some
-        let specificColumn = alphastring .>>. (colTargetWithDot <|> colTargetWithoutDot) |>> (fun (h,t) ->
-            match h,t with
-            | h,None -> (None,h) |> Specifict
-            | h,Some(t) -> (Some(h),t) |> Specifict)
-
-        between (pstring "'") (pstring "'") (all <|> specificColumn)
-
+    let selectColumns = between (pstring "'") (pstring "'") (all <|> (specificColumn |>> Specifict))
 
     let where = pstring "where" >>. spaces >>. equalityExpression .>> spaces
-
-    //let selectParameter = 
-    //    singleQoutedString
-    //    |>> (fun x ->
-    //            match x with
-    //            | "*" -> All("x")
-    //            | name -> (SpecificColumn(None,name)) |> Specifict)
-
     let manySelectParameter = 
         let seperator = pstring "," .>> spaces 
-        sepBy1 columnTarget seperator
+        sepBy1 selectColumns seperator
 
     let create = spaces >>. pstring "create" >>. spaces1 >>. singleQoutedString .>> spaces
     let select = spaces >>. pstring "select" >>. spaces1 >>. manySelectParameter .>> spaces1

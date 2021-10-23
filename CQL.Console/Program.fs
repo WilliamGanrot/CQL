@@ -38,7 +38,7 @@ let main argv =
     //let noAlias = (many1Chars anyChar |>> (fun s -> (Specifict(None,s))))
     //let x = all <|> withAlias <|> noAlias
 
-    match (run Parser.queryType " select 'name',  'adress'  from 'people.csv  '") with
+    match (run Parser.queryType "select    'name',   'adress' from 'people.csv'  where 'id' = 3 where 'name' = \"bert\"") with
     | Success(result, _, _)  ->
         printfn "Success: %A" (result)
         //Interpreter.eval result
