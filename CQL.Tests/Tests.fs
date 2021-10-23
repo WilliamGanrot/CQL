@@ -23,6 +23,8 @@ open FParsec
 [<InlineData("select '*' from 'people.csv' inner join 'table' as 'p' 'a' = 'v'")>]
 [<InlineData("select '*' from 'people.csv' as 'vert' inner join 'table' as 'p' 'a' = 'v'")>]
 [<InlineData("select '*' from 'people.csv' as  'ta'    inner join 'table' as    'p'     'a' = 'v'")>]
+[<InlineData("select '*', 'a.v' from 'people.csv' as  'ta'    inner join 'table' as    'p'     'a' = 'v'")>]
+[<InlineData("select '*' from ( select 'wef', 'qqko', 'wef.qq' from (select 'name' from 'table') )")>]
 let ``select query happy cases`` (query) =
 
     match (run Parser.selectQueryWitheof query) with
@@ -43,6 +45,11 @@ let ``select query happy cases`` (query) =
 [<InlineData("select '*' from select '*' from ")>]
 [<InlineData("select '*' from 'people.csv' iner join 'table' 'a' = 'v'")>]
 [<InlineData("select '*' from 'people.csv' iner join 'table' 'a' = 'v' where 'x' <> 'z'")>]
+[<InlineData("select '* ' 'a.v' from 'people.csv' as  'ta'    inner join 'table' as    'p'     'a' = 'v'")>]
+[<InlineData("select '*' 'a .v' from 'people.csv' as  'ta'    inner join 'table' as    'p'     'a' = 'v'")>]
+[<InlineData("select '*' 'a. v' from 'people.csv' as  'ta'    inner join 'table' as    'p'     'a' = 'v'")>]
+[<InlineData("select '*' 'a-v' from 'people.csv' as  'ta'    inner join 'table' as    'p'     'a' = 'v'")>]
+[<InlineData("select '* from ( select 'wef', 'qqko', 'wef.qq' from (select 'name' from 'table') )")>]
 let ``select query unhappy cases`` (query) =
 
     match (run Parser.selectQueryWitheof query) with
@@ -80,6 +87,17 @@ let ``joinType happy cases`` (query) =
     | Success(result, _, _)  -> Assert.True true
     | Failure(errorMsg, _, _) -> Assert.True false
 
+//[<Theory>]
+//[<InlineData("'*'")>]
+//[<InlineData("'test'")>]
+//[<InlineData("'x.w'")>]
+//let ``columnTarget`` (query) =
+//    let x : Parser<_,unit> = (pstringCI "*" |>> All) .>>? (((many1CharsTill anyChar (pstring ".") |>> Some) .>>. (many1Chars anyChar)) |>> SpecificColumn) .>>? (many1Chars anyChar |>> (fun s -> (SpecificColumn(None,s))))
+
+
+//    match (run x query) with
+//    | Success(result, _, _)  -> Assert.True true
+//    | Failure(errorMsg, _, _) -> Assert.True false
 
 //[<Theory>]
 //[<InlineData("inner join 'table' \"x\" = \"x\"")>]

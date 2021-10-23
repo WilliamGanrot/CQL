@@ -14,9 +14,10 @@ module ParserDomain =
         | StringExpression of string //quoted string
         | Binary of EqualityOperator * ComparisonExpression * ComparisonExpression
 
+    type SpecificColumn = string Option * string
     type Column =
-        | Specifict of string
-        | All
+        | Specifict of SpecificColumn
+        | All of string
 
     type From =
         | TableName of name: string * alias: string Option
@@ -38,6 +39,19 @@ module ParserDomain =
 module Parser =
     open FParsec
 
+    let keywords =
+        ["select"
+         "from"
+         "in"
+         "as"
+         "create"
+         "left join"
+         "inner join"]
+
+    //let pKeyword =
+    //   (many1Satisfy isLower .>> nonAlphaNumeric) // [a-z]+
+    //   >>= (fun s -> if keyWordSet.Contains(s) then (preturn x) else fail "not a keyword")
+
     let queryType, queryTypeRef = createParserForwardedToRef<Query, unit>()
     let fromType, fromTypeRef = createParserForwardedToRef<From, unit>()
     let joinType, joinTypeRef = createParserForwardedToRef<Join, unit>()
@@ -48,6 +62,7 @@ module Parser =
         let seperator = pstring "&&" .>> spaces 
         sepBy1 equalityExpression seperator
 
+    let alphastring : Parser<_,unit> = many1Chars (anyOf "abcdefghijklmnopqrstuvwxyz")
     let manyCharsBetween popen pclose pchar = popen >>? manyCharsTill pchar pclose
     let anyStringBetween popen pclose = manyCharsBetween popen pclose anyChar
     let anyStringBetweenStrings s1 s2 = anyStringBetween (pstring s1) (pstring s2)
@@ -61,16 +76,33 @@ module Parser =
     let stringExpression = doubleQoutedString |>> StringExpression .>> spaces
     let columnExpression = singleQoutedString |>> ColumnExpression .>> spaces
 
+    let columnTarget =
+
+        let all = (pstringCI "*" |>> All)
+
+        let colTargetWithoutDot : Parser<string Option,unit> = spaces |>> fun _ -> None
+        let colTargetWithDot = (pstring "." >>. alphastring) |>> Some
+        let specificColumn = alphastring .>>. (colTargetWithDot <|> colTargetWithoutDot) |>> (fun (h,t) ->
+            match h,t with
+            | h,None -> (None,h) |> Specifict
+            | h,Some(t) -> (Some(h),t) |> Specifict)
+
+        between (pstring "'") (pstring "'") (all <|> specificColumn)
+
+
     let where = pstring "where" >>. spaces >>. equalityExpression .>> spaces
-    let selectParameter = 
-        singleQoutedString
-        |>> (fun x ->
-                match x with
-                | "*" -> All
-                | name -> Specifict(name))
+
+    //let selectParameter = 
+    //    singleQoutedString
+    //    |>> (fun x ->
+    //            match x with
+    //            | "*" -> All("x")
+    //            | name -> (SpecificColumn(None,name)) |> Specifict)
+
     let manySelectParameter = 
         let seperator = pstring "," .>> spaces 
-        sepBy1 selectParameter seperator
+        sepBy1 columnTarget seperator
+
     let create = spaces >>. pstring "create" >>. spaces1 >>. singleQoutedString .>> spaces
     let select = spaces >>. pstring "select" >>. spaces1 >>. manySelectParameter .>> spaces1
 
