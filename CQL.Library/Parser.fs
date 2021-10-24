@@ -18,7 +18,6 @@ module ParserDomain =
         | LesserThan
         | LesserThanOrEquals
 
-
     type Litteral =
         | NumericLitteral of float
         | StringLitteral of string
@@ -40,16 +39,15 @@ module ParserDomain =
 
      and InnerJoin = From * Expression list
      and LeftJoin = From * Expression list
-     and FullJoin = From 
      and Join =
          | Inner of InnerJoin
          | Left of LeftJoin
-         | Full of FullJoin
+         | Full of From
 
     and SelectQuery = Column List * From * Join list * Expression list
     and CreateQuery = string * From
 
-    and Query =
+    type Query =
         | Select of SelectQuery
         | Create of CreateQuery
 
