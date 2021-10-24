@@ -4,30 +4,17 @@ namespace CQL.Parser
 [<AutoOpen>]
 module ParserDomain =
 
-    type BinaryExprKind =
-        | Add
-        | Subtract
-        | Multiply
-        | Divide
-        | And
-        | Or
-        | Equals
-        | NotEquals
-        | GreaterThan
-        | GreaterThanOrEquals
-        | LesserThan
-        | LesserThanOrEquals
-
-    type Litteral =
-        | NumericLitteral of float
-        | StringLitteral of string
-        | BoolLitteral of int
+    type ArithmeticOpperator = Add | Subtract | Multiply | Divide
+    type EqualityOpperator = Equals | NotEquals | GreaterThan | GreaterThanOrEquals | LesserThan | LesserThanOrEquals
 
     type SpecificColumn = string Option * string
     type Expression =
         | ColumnExpression of SpecificColumn
-        | LitteralExpresion of Litteral
-        | Binary of BinaryExprKind * Expression * Expression
+        | NumericLitteral of float
+        | StringLitteral of string
+        | BoolLitteral of int
+        | ArithmeticExpression of ArithmeticOpperator * Expression * Expression
+        | EqualityExpression of EqualityOpperator * Expression * Expression
 
     type Column =
         | Specifict of SpecificColumn
@@ -69,8 +56,11 @@ module Parser =
     let fromType, fromTypeRef = createParserForwardedToRef<From, unit>()
     let joinType, joinTypeRef = createParserForwardedToRef<Join, unit>()
 
-    let opp = OperatorPrecedenceParser<Expression, _, _>()
-    let expr : Parser<_,unit> = opp.ExpressionParser
+    let oppa = OperatorPrecedenceParser<Expression,_,_>()
+    let oppc = OperatorPrecedenceParser<Expression, _, _>()
+
+    let parithmetic = oppa.ExpressionParser
+    let pcomparison = oppc.ExpressionParser
 
     let alphastring : Parser<_,unit> = many1Chars (anyOf alphabet)
     let manyCharsBetween popen pclose pchar = popen >>? manyCharsTill pchar pclose
@@ -80,26 +70,23 @@ module Parser =
     let doubleQoutedString : Parser<_,unit> = anyStringBetweenStrings "\"" "\""
     let betweenString s1 s2 p = between (pstring s1) (pstring s2) p
 
-    let equal : Parser<_,unit> = stringReturn "=" Equals
-    let notequal : Parser<_,unit> = stringReturn "<>" NotEquals
-
     let all = stringReturn "*" All
     let specificColumn = opt(attempt (manyCharsTill (anyOf alphabet) (pstring "."))) .>>. alphastring
 
-    let intlitteral : Parser<_,unit> = pint32 .>> spaces |>> fun x -> (float x) |> NumericLitteral
-    let floatlitteral = pfloat .>> spaces |>> NumericLitteral
+    let intlitteral : Parser<_,unit> = pint32 .>> spaces |>> fun x -> (float x)
+    let floatlitteral = pfloat .>> spaces
 
-    let numberExpression = (floatlitteral <|> intlitteral) |>> LitteralExpresion
-    let stringExpression = doubleQoutedString |>> StringLitteral .>> spaces |>> LitteralExpresion
+    let numberExpression = (floatlitteral <|> intlitteral) |>> NumericLitteral
+    let stringExpression = doubleQoutedString .>> spaces |>> StringLitteral
     let columnExpression = betweenString "'" "'" specificColumn |>> ColumnExpression .>> spaces
-    let boolExpression : Parser<_,unit> = ((stringReturn "true" (BoolLitteral 1)) <|> (stringReturn "false" (BoolLitteral 0))) |>> LitteralExpresion
+    let boolExpression = ((stringReturn "true" (BoolLitteral 1)) <|> (stringReturn "false" (BoolLitteral 0)))
  
     let manyEqualityExpression = 
         let seperator = pstring "&&" .>> spaces 
-        sepBy1 expr seperator
+        sepBy1 pcomparison seperator
 
     let selectColumns = between (pstring "'") (pstring "'") (all <|> (specificColumn |>> Specifict))
-    let where = pstring "where" >>. spaces >>. expr .>> spaces
+    let where = pstring "where" >>. spaces >>. pcomparison .>> spaces
     let manySelectParameter = 
         let seperator = pstring "," .>> spaces 
         sepBy1 selectColumns seperator
@@ -131,8 +118,6 @@ module Parser =
 
     let createQuery = create .>>. fromType .>> spaces |>> fun (filename,(from)) -> CreateQuery(filename,from)
 
-
-
     do queryTypeRef := choice [selectQueryWitheof |>> Select
                                createQuery |>> Create]
 
@@ -143,22 +128,24 @@ module Parser =
                               leftjoin |>> Left
                               fulljoin |>> Full]
 
-
-    opp.AddOperator <| InfixOperator("=", spaces, 1, Associativity.None, fun x y -> Binary (Equals,x, y))
-    opp.AddOperator <| InfixOperator("<>", spaces, 2, Associativity.None, fun x y -> Binary (NotEquals, x, y))
-    opp.AddOperator <| InfixOperator(">", spaces, 3, Associativity.None, fun x y -> Binary (GreaterThan, x, y))
-    opp.AddOperator <| InfixOperator(">=", spaces, 4, Associativity.None, fun x y -> Binary (GreaterThanOrEquals, x, y))
-    opp.AddOperator <| InfixOperator("<", spaces, 5, Associativity.None, fun x y -> Binary (LesserThan, x, y))
-    opp.AddOperator <| InfixOperator("<=", spaces, 6, Associativity.None, fun x y -> Binary (LesserThanOrEquals, x, y))
-    opp.AddOperator <| InfixOperator("+", spaces, 7, Associativity.Left, fun x y -> Binary (Add, x, y))
-    opp.AddOperator <| InfixOperator("*", spaces, 8, Associativity.Left, fun x y -> Binary (Multiply, x, y))
-    opp.AddOperator <| InfixOperator("/", spaces, 9, Associativity.Left, fun x y -> Binary (Divide, x, y))
-
     let expressionLittetrals  = choice [numberExpression;
                                        stringExpression;
                                        columnExpression;
                                        boolExpression;]
-    opp.TermParser <- (expressionLittetrals  .>> spaces) <|> between (spaces >>. pstring "(" >>. spaces) (spaces >>. pstring ")" >>. spaces) expr
 
+    oppa.TermParser <- spaces >>. expressionLittetrals .>> spaces
+    oppa.AddOperator(InfixOperator("+", spaces, 1, Associativity.Left, fun x y -> ArithmeticExpression(Add, x, y)))
+    oppa.AddOperator(InfixOperator("-", spaces, 1, Associativity.Left, fun x y -> ArithmeticExpression(Subtract, x, y)))
+    oppa.AddOperator(InfixOperator("*", spaces, 2, Associativity.Left, fun x y -> ArithmeticExpression(Multiply, x,y)))
+    oppa.AddOperator(InfixOperator("/", spaces, 2, Associativity.Left, fun x y -> ArithmeticExpression(Divide, x,y)))
+    
+
+    oppc.TermParser <- spaces >>. parithmetic .>> spaces
+    oppc.AddOperator(InfixOperator("=", spaces, 1, Associativity.Left, fun x y -> EqualityExpression(Equals, x, y)))
+    oppc.AddOperator(InfixOperator("<>", spaces, 1, Associativity.Left, fun x y -> EqualityExpression(NotEquals, x, y)))
+    oppc.AddOperator(InfixOperator("<=", spaces, 2, Associativity.Left, fun x y -> EqualityExpression(LesserThanOrEquals, x, y)))
+    oppc.AddOperator(InfixOperator(">=", spaces, 2, Associativity.Left, fun x y -> EqualityExpression(GreaterThanOrEquals, x, y)))
+    oppc.AddOperator(InfixOperator("<", spaces, 2, Associativity.Left, fun x y -> EqualityExpression(LesserThan, x, y)))
+    oppc.AddOperator(InfixOperator(">", spaces, 2, Associativity.Left, fun x y -> EqualityExpression(GreaterThan, x, y)))
 
     let parse = spaces >>. queryType
