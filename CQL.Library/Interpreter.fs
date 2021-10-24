@@ -3,6 +3,11 @@ open CQL.Table
 open CQL.Parser
 open System.IO
 
+
+    //TODO
+    //implement more arithmeticExpression cases
+    //make function to guess Expression type of csv cell
+    
 module Interpreter =
 
     let rec equalityComparison opp litteral1 litteral2 =
@@ -26,11 +31,24 @@ module Interpreter =
         | Subtract, NumericLitteral(i1), NumericLitteral(i2) -> NumericLitteral(i1 - i2)
         | Divide, NumericLitteral(i1), NumericLitteral(i2) -> NumericLitteral(i1 / i2)
         | Multiply, NumericLitteral(i1), NumericLitteral(i2) -> NumericLitteral(i1 * i2)
+
         | Add, BoolLitteral b1, BoolLitteral b2 -> BoolLitteral(b1 + b2)
         | Subtract, BoolLitteral b1, BoolLitteral b2 -> BoolLitteral(b1 - b2)
         | Divide, BoolLitteral b1, BoolLitteral b2 -> BoolLitteral(b1 / b2)
         | Multiply, BoolLitteral b1, BoolLitteral b2 -> BoolLitteral(b1 * b2)
-        // TODO DO REST OF COMBINATIons
+
+        | Add, BoolLitteral b1, NumericLitteral n2 -> BoolLitteral(b1 + (int n2))
+        | Subtract, BoolLitteral b1, NumericLitteral n2 -> BoolLitteral(b1 - (int n2))
+        | Divide, BoolLitteral b1, NumericLitteral n2 -> BoolLitteral(b1 / (int n2))
+        | Multiply, BoolLitteral b1, NumericLitteral n2 -> BoolLitteral(b1 * (int n2))
+
+        | Add, NumericLitteral n1, BoolLitteral b2 -> BoolLitteral((int n1) + b2)
+        | Subtract, NumericLitteral n1, BoolLitteral b2 -> BoolLitteral((int n1) - b2)
+        | Divide, NumericLitteral n1, BoolLitteral b2 -> BoolLitteral((int n1) / b2)
+        | Multiply, NumericLitteral n1, BoolLitteral b2 -> BoolLitteral((int n1) * b2)
+
+        | Add, StringLitteral s1, StringLitteral s2 -> StringLitteral(s1 + s2)
+
         | opp, ArithmeticExpression a1, ArithmeticExpression a2 ->
             let a1' = arithmeticExpression a1
             let a2' = arithmeticExpression a2
