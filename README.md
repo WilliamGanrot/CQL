@@ -13,14 +13,14 @@ inner join 'adress.txt' as 'a' 'a.ownerid' = 'p.userid'
 This is a representation of the files ```person.txt``` and ```adress.txt```
 ```
 PERSON.TXT                                          ADRESS.TXT
-...........................................         .....................................................
-userid; | name;      |  age;  | gender    |         | ownerid;  | country;    | city;       | zip       |
-...........................................         .....................................................
-928;    |"Lars";     |  54;   | "male"    |         | 1394;     | "Germany";  | "Berlin";   | 43-242    |
-1394;   |"Klaus";    |  32;   | "male"    |         | 928;      | "Sweden";"  | Stockholm"; | 97-1235   |
-571;    |"Juliette"; |  39;   | "female"  |         | 928;      | "Norway";"  |Oslo";       | 324-2425  |
-...........................................         | 571;      | "France";"  |Paris";      | 921-135   |
-                                                    .....................................................
+...........................................         .......................................................
+userid; | name;      |  age;  | gender    |         | ownerid;  | country;    | city;       | zip         |
+...........................................         .......................................................
+928;    |"Lars";     |  54;   | "male"    |         | 1394;     | "Germany";  | "Berlin";   | "43-242"    |
+1394;   |"Klaus";    |  32;   | "male"    |         | 928;      | "Sweden";"  | "Stockholm";| "97-1235"   |
+571;    |"Juliette"; |  39;   | "female"  |         | 928;      | "Norway";"  | "Oslo";     | "324-2425"  |
+...........................................         | 571;      | "France";"  | "Paris";    | "921-135"   |
+                                                    .......................................................
 ```
 
 The exampel query will get parsed into a domain model which looks like this
@@ -36,9 +36,9 @@ Select
 
 The domain model will then get evaluated and result in the following table.
 ```sql
-userid        name       age    gender   ownerid   country      city       zip
-   928      "Lars"        54    "male"       928  "Sweden""Stockholm"  97-1235
-   928      "Lars"        54    "male"       928  "Norway"    "Oslo"  324-2425
-  1394     "Klaus"        32    "male"      1394 "Germany"  "Berlin"    43-242
-   571  "Juliette"        39  "female"       571  "France"   "Paris"   921-135
+userid        name       age    gender   ownerid   country      city         zip
+   928      "Lars"        54    "male"       928  "Sweden""Stockholm"  "97-1235"
+   928      "Lars"        54    "male"       928  "Norway"    "Oslo"  "324-2425"
+  1394     "Klaus"        32    "male"      1394 "Germany"  "Berlin"    "43-242"
+   571  "Juliette"        39  "female"       571  "France"   "Paris"   "921-135"
 ```
