@@ -62,19 +62,6 @@ module Interpreter =
 
         | Add, StringLitteral s1, StringLitteral s2 -> StringLitteral(s1 + s2)
 
-        //| opp, ColumnExpression c1, ColumnExpression c2 ->
-        //    let v1 = StringLitteral("should guess datatype of c1")
-        //    let v2 = StringLitteral("should guess datatype of c2")
-        //    arithmeticExpression (Arithmetic(opp, v1, v2))
-
-        //| opp, ColumnExpression c1, e2 ->
-        //    let v1 = StringLitteral("should guess datatype of c1")
-        //    arithmeticExpression (Arithmetic(opp, v1, e2))
-
-        //| opp, e1, ColumnExpression c2 ->
-        //    let e2 = StringLitteral("should guess datatype of c2")
-        //    arithmeticExpression (Arithmetic(opp, e1, e2))
-
         | opp, ArithmeticExpression a1, ArithmeticExpression a2 ->
             let a1' = arithmeticExpression a1
             let a2' = arithmeticExpression a2
@@ -174,6 +161,99 @@ module Interpreter =
                     let tableV = row.[Table.getheaderIndex fullyJoinedTable name]
                     let tablebool = if tableV = "true" then (BoolLitteral 1) else (BoolLitteral 0)
                     if (equalityComparison op tablebool (BoolLitteral b)) then Some row else None
+
+                | EqualityExpression(op, ArithmeticExpression a1, ArithmeticExpression a2) ->
+
+                    // THIS IS DONE TO a1 doesnt contain a specificcolum
+                    // however this must be done recursivly
+                    let e1 =
+                        match a1 with
+                        | op, ColumnExpression c, ColumnExpression c2 ->
+                            let e1 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
+                            let e2 = row.[Table.getheaderIndex fullyJoinedTable c2] |> guessDataTypeOfStringContent
+                            arithmeticExpression (op,e1,e2)
+                        | op, ColumnExpression c, e2 ->
+                            let e1 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
+                            arithmeticExpression (op,e1,e2)
+                        | op, e1, ColumnExpression c ->
+                            let e2 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
+                            arithmeticExpression (op,e1,e2)
+                        | _ -> arithmeticExpression a1
+
+                    let e2 =
+                        match a2 with
+                        | op, ColumnExpression c, ColumnExpression c2 ->
+                            let e1 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
+                            let e2 = row.[Table.getheaderIndex fullyJoinedTable c2] |> guessDataTypeOfStringContent
+                            arithmeticExpression (op,e1,e2)
+                        | op, ColumnExpression c, e2 ->
+                            let e1 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
+                            arithmeticExpression (op,e1,e2)
+                        | op, e1, ColumnExpression c ->
+                            let e2 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
+                            arithmeticExpression (op,e1,e2)
+                        | _ -> arithmeticExpression a2
+
+                    if (equalityComparison op e1 e2) then Some row else None
+
+                | EqualityExpression(op, ArithmeticExpression a1, ColumnExpression name) ->
+
+                    let e1 =
+                        match a1 with
+                        | op, ColumnExpression c, ColumnExpression c2 ->
+                            let e1 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
+                            let e2 = row.[Table.getheaderIndex fullyJoinedTable c2] |> guessDataTypeOfStringContent
+                            arithmeticExpression (op,e1,e2)
+                        | op, ColumnExpression c, e2 ->
+                            let e1 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
+                            arithmeticExpression (op,e1,e2)
+                        | op, e1, ColumnExpression c ->
+                            let e2 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
+                            arithmeticExpression (op,e1,e2)
+                        | _ -> arithmeticExpression a1
+
+                    let e2 = row.[Table.getheaderIndex fullyJoinedTable name] |> guessDataTypeOfStringContent
+                    if (equalityComparison op e1 e2) then Some row else None
+
+                | EqualityExpression(op, ColumnExpression name, ArithmeticExpression a2) ->
+                    let e2 =
+                        match a2 with
+                        | op, ColumnExpression c, ColumnExpression c2 ->
+                            let e1 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
+                            let e2 = row.[Table.getheaderIndex fullyJoinedTable c2] |> guessDataTypeOfStringContent
+                            arithmeticExpression (op,e1,e2)
+                        | op, ColumnExpression c, e2 ->
+                            let e1 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
+                            arithmeticExpression (op,e1,e2)
+                        | op, e1, ColumnExpression c ->
+                            let e2 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
+                            arithmeticExpression (op,e1,e2)
+                        | _ -> arithmeticExpression a2
+
+                    let e1 = row.[Table.getheaderIndex fullyJoinedTable name] |> guessDataTypeOfStringContent
+                    if (equalityComparison op e1 e2) then Some row else None
+
+                | EqualityExpression(op, ArithmeticExpression a1, e2) ->
+
+                    let e1 =
+                        match a1 with
+                        | (op,ColumnExpression( c), ColumnExpression(c2)) ->
+                            let e1 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
+                            let e2 = row.[Table.getheaderIndex fullyJoinedTable c2] |> guessDataTypeOfStringContent
+                            arithmeticExpression (op,e1,e2)
+                        | op, ColumnExpression c, e2 ->
+                            let e1 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
+                            arithmeticExpression (op,e1,e2)
+                        | op, e1, ColumnExpression c ->
+                            let e2 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
+                            arithmeticExpression (op,e1,e2)
+                        | _ -> arithmeticExpression a1
+
+                    if (equalityComparison op e1 e2) then Some row else None
+
+                | EqualityExpression(op, e1, ArithmeticExpression a2) ->
+                    let e2 = arithmeticExpression a2
+                    if (equalityComparison op e1 e2) then Some row else None
 
                 | (BoolLitteral(i)) when i = 0 -> None 
                 | _ -> Some row )

@@ -7,7 +7,7 @@ open CQL.Interpreter
 [<EntryPoint>]
 let main argv =
 
-    let q = "select '*' from 'person.txt' as 'p' inner join 'adress.txt' as 'a' 'a.ownerid' + 'p.userid' = 10"
+    let q = "select '*' from 'person.txt' as 'p' inner join 'adress.txt' as 'a' 'a.ownerid' + 'p.userid' + 'p.userid' = 'p.userid' * 2 + 'a.ownerid'"
     match (run Parser.queryType q) with
     | Success(result, _, _)  ->
 
