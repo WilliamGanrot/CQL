@@ -1,7 +1,6 @@
 namespace CQL.Table
 open CQL.Parser
 open System.IO
-open ConsoleTables
 
 [<AutoOpen>]
 module TableDomain =
