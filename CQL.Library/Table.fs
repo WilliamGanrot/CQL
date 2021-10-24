@@ -1,6 +1,7 @@
 namespace CQL.Table
 open CQL.Parser
 open System.IO
+open ConsoleTables
 
 [<AutoOpen>]
 module TableDomain =
@@ -66,8 +67,11 @@ module Table =
         headerString :: contentRows
 
     let printTable table =
+
         tableToCsvRows table
-        |> List.iter(fun r -> printfn "%A" r)
+        |> List.iter(fun r ->
+            r.Split [|';'|] |> Array.iter (fun cell -> printf "%10s" cell)
+            printfn "")
 
     let saveTableAsCsv name table =
         let rows = tableToCsvRows table

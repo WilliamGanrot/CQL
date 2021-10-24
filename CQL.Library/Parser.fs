@@ -95,8 +95,7 @@ module Parser =
     let stringExpression = doubleQoutedString |>> StringLitteral .>> spaces |>> LitteralExpresion
     let columnExpression = betweenString "'" "'" specificColumn |>> ColumnExpression .>> spaces
     let boolExpression : Parser<_,unit> = ((stringReturn "true" (BoolLitteral 1)) <|> (stringReturn "false" (BoolLitteral 0))) |>> LitteralExpresion
-    //let binaryEquality = betweenString "(" ")" (spaces >>. expressionType .>> spaces .>>. (equal <|> notequal) .>>. (spaces >>. expressionType)) |>> (fun ((x,y),z) -> Binary(y,x,z))
-
+ 
     let manyEqualityExpression = 
         let seperator = pstring "&&" .>> spaces 
         sepBy1 expr seperator
