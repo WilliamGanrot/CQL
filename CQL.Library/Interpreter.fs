@@ -38,7 +38,6 @@ module Interpreter =
         | StringIsInt s -> NumericLitteral(float s)
         | _ -> StringLitteral s
 
-
     let rec arithmeticExpression aexpr =
         match aexpr with
         | Add, NumericLitteral(i1), NumericLitteral(i2) -> NumericLitteral(i1 + i2)
@@ -63,18 +62,18 @@ module Interpreter =
 
         | Add, StringLitteral s1, StringLitteral s2 -> StringLitteral(s1 + s2)
 
-        | opp, ColumnExpression c1, ColumnExpression c2 ->
-            let v1 = StringLitteral("should guess datatype of c1")
-            let v2 = StringLitteral("should guess datatype of c2")
-            arithmeticExpression (Arithmetic(opp, v1, v2))
+        //| opp, ColumnExpression c1, ColumnExpression c2 ->
+        //    let v1 = StringLitteral("should guess datatype of c1")
+        //    let v2 = StringLitteral("should guess datatype of c2")
+        //    arithmeticExpression (Arithmetic(opp, v1, v2))
 
-        | opp, ColumnExpression c1, e2 ->
-            let v1 = StringLitteral("should guess datatype of c1")
-            arithmeticExpression (Arithmetic(opp, v1, e2))
+        //| opp, ColumnExpression c1, e2 ->
+        //    let v1 = StringLitteral("should guess datatype of c1")
+        //    arithmeticExpression (Arithmetic(opp, v1, e2))
 
-        | opp, e1, ColumnExpression c2 ->
-            let e2 = StringLitteral("should guess datatype of c2")
-            arithmeticExpression (Arithmetic(opp, e1, e2))
+        //| opp, e1, ColumnExpression c2 ->
+        //    let e2 = StringLitteral("should guess datatype of c2")
+        //    arithmeticExpression (Arithmetic(opp, e1, e2))
 
         | opp, ArithmeticExpression a1, ArithmeticExpression a2 ->
             let a1' = arithmeticExpression a1
@@ -145,10 +144,10 @@ module Interpreter =
                 match expr with
                 | EqualityExpression(op, ColumnExpression name1, ColumnExpression name2) ->
 
-                    let v1 = row.[Table.getheaderIndex fullyJoinedTable name1]
-                    let v2 = row.[Table.getheaderIndex fullyJoinedTable name2]
+                    let v1 = row.[Table.getheaderIndex fullyJoinedTable name1] |> guessDataTypeOfStringContent
+                    let v2 = row.[Table.getheaderIndex fullyJoinedTable name2] |> guessDataTypeOfStringContent
 
-                    if equalityComparison op (StringLitteral v1) (StringLitteral v2) then Some row else None
+                    if equalityComparison op v1 v2 then Some row else None
 
                 | EqualityExpression(op, ColumnExpression name, (NumericLitteral(i))) ->
                     let tableV = row.[Table.getheaderIndex fullyJoinedTable name] |> float
