@@ -7,11 +7,18 @@ open CQL.Interpreter
 [<EntryPoint>]
 let main argv =
 
-    let q = "select '*' from 'person.txt' as 'p' full join 'adress.txt'"
-    match (run Parser.queryType q) with
+    let q = "1 + 3 * 5 - 2"
+    match (run Parser.parithmetic q) with
     | Success(result, _, _)  ->
         printfn "Success: %A" (result)
         printfn ""
-        Interpreter.eval result
+        match result with
+        | ArithmeticExpression a->
+
+            Interpreter.arithmeticExpression a |> printfn "%A" |> ignore
+        | _ -> failwith ""
+        //let o,e1,e2 = result
+
+        //Interpreter.eval result
     | Failure(errorMsg, _, _) -> printfn "Failure: %s" errorMsg
     0

@@ -20,6 +20,27 @@ module Interpreter =
         //| Add, NumericLitteral(l1), NumericLitteral(l2) -> i1 + i2
         //| Subtract, NumericLitteral(l1), NumericLitteral(l2) -> i1 -i2
 
+    let rec arithmeticExpression aexpr=
+        match aexpr with
+        | Add, NumericLitteral(i1), NumericLitteral(i2) -> NumericLitteral(i1 + i2)
+        | Subtract, NumericLitteral(i1), NumericLitteral(i2) -> NumericLitteral(i1 - i2)
+        | Divide, NumericLitteral(i1), NumericLitteral(i2) -> NumericLitteral(i1 / i2)
+        | Multiply, NumericLitteral(i1), NumericLitteral(i2) -> NumericLitteral(i1 * i2)
+        | Add, BoolLitteral b1, BoolLitteral b2 -> BoolLitteral(b1 + b2)
+        | Subtract, BoolLitteral b1, BoolLitteral b2 -> BoolLitteral(b1 - b2)
+        | Divide, BoolLitteral b1, BoolLitteral b2 -> BoolLitteral(b1 / b2)
+        | Multiply, BoolLitteral b1, BoolLitteral b2 -> BoolLitteral(b1 * b2)
+        // TODO DO REST OF COMBINATIons
+        | opp, ArithmeticExpression a1, ArithmeticExpression a2 ->
+            let a1' = arithmeticExpression a1
+            let a2' = arithmeticExpression a2
+            arithmeticExpression (Arithmetic (opp, a1', a2'))
+        | opp, ArithmeticExpression a1, a2 ->
+            let a1' = arithmeticExpression a1
+            arithmeticExpression (Arithmetic (opp, a1', a2))
+        | opp, a1, ArithmeticExpression a2 ->
+            let a2' = arithmeticExpression a2
+            arithmeticExpression (Arithmetic(opp, a1, a2'))
 
     let rec evalSelectQuery (selectQuery:SelectQuery) = 
         let (cols,from,joins,where) = selectQuery

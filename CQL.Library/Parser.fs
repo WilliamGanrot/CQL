@@ -8,13 +8,18 @@ module ParserDomain =
     type EqualityOpperator = Equals | NotEquals | GreaterThan | GreaterThanOrEquals | LesserThan | LesserThanOrEquals
 
     type SpecificColumn = string Option * string
+
     type Expression =
         | ColumnExpression of SpecificColumn
         | NumericLitteral of float
         | StringLitteral of string
         | BoolLitteral of int
-        | ArithmeticExpression of ArithmeticOpperator * Expression * Expression
-        | EqualityExpression of EqualityOpperator * Expression * Expression
+        | ArithmeticExpression of Arithmetic
+        | EqualityExpression of Equality
+
+    and Arithmetic = ArithmeticOpperator * Expression * Expression
+    and Equality = EqualityOpperator * Expression * Expression
+
 
     type Column =
         | Specifict of SpecificColumn
