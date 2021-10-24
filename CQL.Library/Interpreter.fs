@@ -2,30 +2,44 @@ namespace CQL.Interpreter
 open CQL.Table
 open CQL.Parser
 open System.IO
+open System
 
 
     //TODO
-    //implement more arithmeticExpression cases
     //make function to guess Expression type of csv cell
     
 module Interpreter =
 
-    let rec equalityComparison opp litteral1 litteral2 =
-        match opp, litteral1, litteral2 with
-        | Equals, l1, l2 -> l1 = l2
-        | NotEquals, l1, l2 -> l1 <> l2
-        | GreaterThan, NumericLitteral(l1), NumericLitteral(l2) -> l1 > l2
-        | GreaterThan,_,_ -> failwith "> is not a valid operator for this type"
-        | GreaterThanOrEquals, NumericLitteral(l1), NumericLitteral(l2) -> l1 >= l2
-        | GreaterThanOrEquals,_,_ -> failwith ">= is not a valid operator for this type"
-        | LesserThan, NumericLitteral(l1), NumericLitteral(l2) -> l1 < l2
-        | LesserThan,_,_ -> failwith "< is not a valid operator for this type"
-        | LesserThanOrEquals, NumericLitteral(l1), NumericLitteral(l2) -> l1 <= l2
-        | LesserThanOrEquals,_,_ -> failwith "<= is not a valid operator for this type"
-        //| Add, NumericLitteral(l1), NumericLitteral(l2) -> i1 + i2
-        //| Subtract, NumericLitteral(l1), NumericLitteral(l2) -> i1 -i2
+    let (|StringIsInt|_|) (str:string) =
+        match System.Int32.TryParse str with
+        | true,int -> Some int
+        | _ -> None
 
-    let rec arithmeticExpression aexpr=
+    let (|StringIsFalse|_|) (str:string) =
+        match str = "false" || str = "FALSE" with
+        | true -> Some 1
+        | _ -> None
+
+    let (|StringIsTrue|_|) (str:string) =
+        match str = "false" || str = "FALSE" with
+        | true -> Some 1
+        | _ -> None
+
+    let (|StringIsQouted|_|) (str:string) =
+        match str.[0] = '"' && str.[str.Length-1] = '"' || str.[0] = ''' && str.[str.Length-1] = ''' with
+        | true -> Some str
+        | _ -> None
+
+    let guessDataTypeOfStringContent (s:string) =
+        match s with
+        | StringIsQouted s -> StringLitteral s
+        | StringIsFalse i -> BoolLitteral(i)
+        | StringIsTrue i -> BoolLitteral(i)
+        | StringIsInt s -> NumericLitteral(float s)
+        | _ -> StringLitteral s
+
+
+    let rec arithmeticExpression aexpr =
         match aexpr with
         | Add, NumericLitteral(i1), NumericLitteral(i2) -> NumericLitteral(i1 + i2)
         | Subtract, NumericLitteral(i1), NumericLitteral(i2) -> NumericLitteral(i1 - i2)
@@ -49,6 +63,19 @@ module Interpreter =
 
         | Add, StringLitteral s1, StringLitteral s2 -> StringLitteral(s1 + s2)
 
+        | opp, ColumnExpression c1, ColumnExpression c2 ->
+            let v1 = StringLitteral("should guess datatype of c1")
+            let v2 = StringLitteral("should guess datatype of c2")
+            arithmeticExpression (Arithmetic(opp, v1, v2))
+
+        | opp, ColumnExpression c1, e2 ->
+            let v1 = StringLitteral("should guess datatype of c1")
+            arithmeticExpression (Arithmetic(opp, v1, e2))
+
+        | opp, e1, ColumnExpression c2 ->
+            let e2 = StringLitteral("should guess datatype of c2")
+            arithmeticExpression (Arithmetic(opp, e1, e2))
+
         | opp, ArithmeticExpression a1, ArithmeticExpression a2 ->
             let a1' = arithmeticExpression a1
             let a2' = arithmeticExpression a2
@@ -59,6 +86,30 @@ module Interpreter =
         | opp, a1, ArithmeticExpression a2 ->
             let a2' = arithmeticExpression a2
             arithmeticExpression (Arithmetic(opp, a1, a2'))
+        | _ -> failwith "opperator not applyable on values"
+
+    let rec equalityComparison opp expr1 expr2 =
+        match opp, expr1, expr2 with
+        | opp, ArithmeticExpression a1, ArithmeticExpression a2 ->
+            let e1 = arithmeticExpression a1
+            let e2 = arithmeticExpression a2
+            equalityComparison opp e1 e2
+        | opp, ArithmeticExpression a1, e2 ->
+            let e1 = arithmeticExpression a1
+            equalityComparison opp e1 e2
+        | opp, e1, ArithmeticExpression a2 ->
+            let e2 = arithmeticExpression a2
+            equalityComparison opp e1 e2
+        | Equals, l1, l2 -> l1 = l2
+        | NotEquals, l1, l2 -> l1 <> l2
+        | GreaterThan, NumericLitteral(l1), NumericLitteral(l2) -> l1 > l2
+        | GreaterThan,_,_ -> failwith "> is not a valid operator for this type"
+        | GreaterThanOrEquals, NumericLitteral(l1), NumericLitteral(l2) -> l1 >= l2
+        | GreaterThanOrEquals,_,_ -> failwith ">= is not a valid operator for this type"
+        | LesserThan, NumericLitteral(l1), NumericLitteral(l2) -> l1 < l2
+        | LesserThan,_,_ -> failwith "< is not a valid operator for this type"
+        | LesserThanOrEquals, NumericLitteral(l1), NumericLitteral(l2) -> l1 <= l2
+        | LesserThanOrEquals,_,_ -> failwith "<= is not a valid operator for this type"
 
     let rec evalSelectQuery (selectQuery:SelectQuery) = 
         let (cols,from,joins,where) = selectQuery
