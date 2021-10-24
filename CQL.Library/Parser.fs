@@ -19,13 +19,15 @@ module ParserDomain =
         | LesserThanOrEquals
 
 
+    type Litteral =
+        | NumericLitteral of float
+        | StringLitteral of string
+        | BoolLitteral of int
 
     type SpecificColumn = string Option * string
     type Expression =
         | ColumnExpression of SpecificColumn
-        | NumberExpression of float
-        | StringExpression of string
-        | Bool of int //1 = true else is false
+        | LitteralExpresion of Litteral
         | Binary of BinaryExprKind * Expression * Expression
 
     type Column =
@@ -84,13 +86,13 @@ module Parser =
     let all = stringReturn "*" All
     let specificColumn = opt(attempt (manyCharsTill (anyOf alphabet) (pstring "."))) .>>. alphastring
 
-    let intlitteral : Parser<_,unit> = pint32 .>> spaces |>> (fun i -> (float i)) |>> NumberExpression
-    let floatlitteral = pfloat .>> spaces |>> NumberExpression
+    let intlitteral : Parser<_,unit> = pint32 .>> spaces |>> fun x -> (float x) |> NumericLitteral
+    let floatlitteral = pfloat .>> spaces |>> NumericLitteral
 
-    let numberExpression = floatlitteral <|> intlitteral 
-    let stringExpression = doubleQoutedString |>> StringExpression .>> spaces
+    let numberExpression = (floatlitteral <|> intlitteral) |>> LitteralExpresion
+    let stringExpression = doubleQoutedString |>> StringLitteral .>> spaces |>> LitteralExpresion
     let columnExpression = betweenString "'" "'" specificColumn |>> ColumnExpression .>> spaces
-    let boolExpression : Parser<_,unit> = ((stringReturn "true" (Bool 1)) <|> (stringReturn "false" (Bool 0)))
+    let boolExpression : Parser<_,unit> = ((stringReturn "true" (BoolLitteral 1)) <|> (stringReturn "false" (BoolLitteral 0))) |>> LitteralExpresion
     //let binaryEquality = betweenString "(" ")" (spaces >>. expressionType .>> spaces .>>. (equal <|> notequal) .>>. (spaces >>. expressionType)) |>> (fun ((x,y),z) -> Binary(y,x,z))
 
     let manyEqualityExpression = 
@@ -142,12 +144,16 @@ module Parser =
 
 
     opp.AddOperator <| InfixOperator("=", spaces, 1, Associativity.None, fun x y -> Binary (Equals,x, y))
-    opp.AddOperator <| InfixOperator("<>", spaces, 1, Associativity.None, fun x y -> Binary (NotEquals, x, y))
-    opp.AddOperator <| InfixOperator("+", spaces, 2, Associativity.Left, fun x y -> Binary (Add, x, y))
-    opp.AddOperator <| InfixOperator("*", spaces, 3, Associativity.Left, fun x y -> Binary (Multiply, x, y))
-    opp.AddOperator <| InfixOperator("/", spaces, 4, Associativity.Left, fun x y -> Binary (Divide, x, y))
+    opp.AddOperator <| InfixOperator("<>", spaces, 2, Associativity.None, fun x y -> Binary (NotEquals, x, y))
+    opp.AddOperator <| InfixOperator(">", spaces, 3, Associativity.None, fun x y -> Binary (GreaterThan, x, y))
+    opp.AddOperator <| InfixOperator(">=", spaces, 4, Associativity.None, fun x y -> Binary (GreaterThanOrEquals, x, y))
+    opp.AddOperator <| InfixOperator("<", spaces, 5, Associativity.None, fun x y -> Binary (LesserThan, x, y))
+    opp.AddOperator <| InfixOperator("<=", spaces, 6, Associativity.None, fun x y -> Binary (LesserThanOrEquals, x, y))
+    opp.AddOperator <| InfixOperator("+", spaces, 7, Associativity.Left, fun x y -> Binary (Add, x, y))
+    opp.AddOperator <| InfixOperator("*", spaces, 8, Associativity.Left, fun x y -> Binary (Multiply, x, y))
+    opp.AddOperator <| InfixOperator("/", spaces, 9, Associativity.Left, fun x y -> Binary (Divide, x, y))
 
-    let expressionLittetrals = choice [numberExpression;
+    let expressionLittetrals  = choice [numberExpression;
                                        stringExpression;
                                        columnExpression;
                                        boolExpression;]

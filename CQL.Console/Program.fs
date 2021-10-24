@@ -7,10 +7,11 @@ open CQL.Interpreter
 [<EntryPoint>]
 let main argv =
 
-    let q = "(2 + (2+3))"
-    match (run Parser.expr q) with
+    let q = "select '*' from 'person.txt' as 'p' inner join 'adress.txt' as 'a' 'a.number' > 4"
+    match (run Parser.queryType q) with
     | Success(result, _, _)  ->
         printfn "Success: %A" (result)
-        //Interpreter.eval result
+        printfn ""
+        Interpreter.eval result
     | Failure(errorMsg, _, _) -> printfn "Failure: %s" errorMsg
     0

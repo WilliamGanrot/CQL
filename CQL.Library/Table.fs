@@ -12,8 +12,12 @@ module TableDomain =
 module Table =
 
     let create alias headers rows =
+
         {alias = alias;
-         headers = headers |> List.map(fun s -> (SpecificColumn (alias,s)));
+         headers =
+            match alias with
+            | None -> headers
+            | Some a -> headers |> List.map (fun(_,name) -> (alias,name) |> SpecificColumn);
          contentRows = rows}
 
     let getheaderIndex table colToFind =
@@ -36,9 +40,9 @@ module Table =
             |> List.filter (fun (i,(a,n)) -> n = name)
             |> validateFoundMatchCols (name)
 
-    let getSubTable table (cols: Column List) =
+    let getSelectColumns table (cols: Column List) =
 
-        let stringcols =
+        let headers =
             [for col in cols do
                match col with
                 | Specifict (alias,name) -> (SpecificColumn (alias,name))
@@ -53,7 +57,7 @@ module Table =
                         let index = getheaderIndex table (SpecificColumn (alias,name))
                         row.[index] ]]
                  
-        {alias = table.alias; contentRows = rows; headers = stringcols}
+        {alias = table.alias; contentRows = rows; headers = headers}
 
     let tableToCsvRows table =
         let s = table.headers |> List.map (fun (a,n) -> n)
