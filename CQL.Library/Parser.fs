@@ -57,7 +57,7 @@ module ParserDomain =
 module Parser =
     open FParsec
 
-    let alphabet = "abcdefghijklmnopqrstuvwxyz"
+    let alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIHKLMNOPQRSTUVWXYZ"
     let keywords =
         ["select"
          "from"
