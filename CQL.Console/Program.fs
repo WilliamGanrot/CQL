@@ -7,7 +7,7 @@ open CQL.Interpreter
 [<EntryPoint>]
 let main argv =
 
-    let q = "select '*' from 'person.txt' as 'p' inner join 'adress.txt' as 'a' 'a.number' > 4"
+    let q = "select '*' from 'person.txt' as 'p' full join 'adress.txt'"
     match (run Parser.queryType q) with
     | Success(result, _, _)  ->
         printfn "Success: %A" (result)

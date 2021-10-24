@@ -74,7 +74,8 @@ module Interpreter =
             let tableToJoin = getTable from
             let fullyJoinedTable = fulljoin originTable tableToJoin
 
-            let expr = expressions.Head //only handles one expression
+            let expr = expressions.Head //only handles one expression AND need to recursivly compute all additions
+            
 
             fullyJoinedTable.contentRows
             |> List.choose(fun row ->
@@ -114,6 +115,9 @@ module Interpreter =
                 | LitteralExpresion(BoolLitteral(i)) when i = 0 -> None 
                 | _ -> Some row )
             |> Table.create None fullyJoinedTable.headers
+        | Full(from) :: t ->
+            let tableToJoin = getTable from
+            fulljoin originTable tableToJoin
 
 
 

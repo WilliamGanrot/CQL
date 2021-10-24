@@ -40,9 +40,11 @@ module ParserDomain =
 
      and InnerJoin = From * Expression list
      and LeftJoin = From * Expression list
+     and FullJoin = From 
      and Join =
          | Inner of InnerJoin
          | Left of LeftJoin
+         | Full of FullJoin
 
     and SelectQuery = Column List * From * Join list * Expression list
     and CreateQuery = string * From
@@ -110,6 +112,7 @@ module Parser =
 
     let innerjoin = pstring "inner join" >>. spaces1 >>. fromType .>> spaces .>>. manyEqualityExpression .>> spaces |>> InnerJoin
     let leftjoin = pstring "left join" >>. spaces1 >>. fromType .>> spaces .>>. manyEqualityExpression .>> spaces |>> LeftJoin
+    let fulljoin = pstring "full join" >>. spaces1 >>. fromType .>> spaces
 
     let joins = opt(many1 joinType) |>> (fun joinlist ->
         match joinlist with
@@ -140,7 +143,8 @@ module Parser =
                               subSelectQuery |>> SubQuery]
 
     do joinTypeRef := choice [innerjoin |>> Inner
-                              leftjoin |>> Left]
+                              leftjoin |>> Left
+                              fulljoin |>> Full]
 
 
     opp.AddOperator <| InfixOperator("=", spaces, 1, Associativity.None, fun x y -> Binary (Equals,x, y))
