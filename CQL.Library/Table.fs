@@ -20,24 +20,23 @@ module Table =
             | Some a -> headers |> List.map (fun(_,name) -> (alias,name) |> SpecificColumn);
          contentRows = rows}
 
-    let getheaderIndex table colToFind =
-
-        let indexedHeaders = table.headers |> List.indexed
+    let getheaderIndex headers colToFind =
 
         let validateFoundMatchCols name foundColumnsWithIndexes =
             match foundColumnsWithIndexes with
             | [] -> failwith ("could not find column " + name)
-            | (index, column)::[] -> index
+            | (index, _)::[] -> index
             | _ -> failwith ("ambigious column name " + name)
 
+        let indexedHeaders = headers |> List.indexed
         match colToFind with
         | (Some alias), name ->
             indexedHeaders
-            |> List.filter (fun (i,(a,n)) -> a = Some(alias) && n = name)
+            |> List.filter (fun (_,(a,n)) -> a = Some(alias) && n = name)
             |> validateFoundMatchCols (alias + "." + name)
         | None, name ->
             indexedHeaders
-            |> List.filter (fun (i,(a,n)) -> n = name)
+            |> List.filter (fun (_,(_,n)) -> n = name)
             |> validateFoundMatchCols (name)
 
     let getSelectColumns table (cols: Column List) =
@@ -54,7 +53,7 @@ module Table =
                     match col with
                     | All(_) -> yield! row
                     | Specifict (alias,name) -> 
-                        let index = getheaderIndex table (SpecificColumn (alias,name))
+                        let index = getheaderIndex table.headers (SpecificColumn (alias,name))
                         row.[index] ]]
                  
         {alias = table.alias; contentRows = rows; headers = headers}

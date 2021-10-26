@@ -2,12 +2,7 @@ namespace CQL.Interpreter
 open CQL.Table
 open CQL.Parser
 open System.IO
-open System
 
-
-    //TODO
-    //make function to guess Expression type of csv cell
-    
 module Interpreter =
 
     let (|StringIsInt|_|) (str:string) =
@@ -15,13 +10,18 @@ module Interpreter =
         | true,int -> Some int
         | _ -> None
 
+    let (|StringIsFloat|_|) (str:string) =
+        match System.Double.TryParse str with
+        | true, f -> Some f
+        | _ -> None
+
     let (|StringIsFalse|_|) (str:string) =
         match str = "false" || str = "FALSE" with
-        | true -> Some 1
+        | true -> Some 0
         | _ -> None
 
     let (|StringIsTrue|_|) (str:string) =
-        match str = "false" || str = "FALSE" with
+        match str = "true" || str = "TRUE" with
         | true -> Some 1
         | _ -> None
 
@@ -30,81 +30,97 @@ module Interpreter =
         | true -> Some str
         | _ -> None
 
-    let guessDataTypeOfStringContent (s:string) =
+    let guessDataTypeOfStringContent s =
         match s with
         | StringIsQouted s -> StringLitteral s
-        | StringIsFalse i -> BoolLitteral(i)
-        | StringIsTrue i -> BoolLitteral(i)
-        | StringIsInt s -> NumericLitteral(float s)
+        | StringIsFalse i -> BoolLitteral i
+        | StringIsTrue i -> BoolLitteral i
+        | StringIsFloat f -> NumericLitteral f
+        | StringIsInt s -> NumericLitteral (float s)
         | _ -> StringLitteral s
 
-    let rec arithmeticExpression aexpr =
+    let litteralIsTrue = function
+        | BoolLitteral l when l = 0 -> false
+        | _ -> true
+
+    let rec getLitteralFromExpression (aexpr : LitteralExpression) : Litteral =
         match aexpr with
-        | Add, NumericLitteral(i1), NumericLitteral(i2) -> NumericLitteral(i1 + i2)
-        | Subtract, NumericLitteral(i1), NumericLitteral(i2) -> NumericLitteral(i1 - i2)
-        | Divide, NumericLitteral(i1), NumericLitteral(i2) -> NumericLitteral(i1 / i2)
-        | Multiply, NumericLitteral(i1), NumericLitteral(i2) -> NumericLitteral(i1 * i2)
+        | LitteralExpression.Litteral l -> l
+        | LitteralExpression.ArithmeticExpression (opp, a1, a2) ->
+            let a1' = getLitteralFromExpression a1
+            let a2' = getLitteralFromExpression a2
 
-        | Add, BoolLitteral b1, BoolLitteral b2 -> BoolLitteral(b1 + b2)
-        | Subtract, BoolLitteral b1, BoolLitteral b2 -> BoolLitteral(b1 - b2)
-        | Divide, BoolLitteral b1, BoolLitteral b2 -> BoolLitteral(b1 / b2)
-        | Multiply, BoolLitteral b1, BoolLitteral b2 -> BoolLitteral(b1 * b2)
+            match (opp, a1', a2') with
+            | Add, NumericLitteral(i1), NumericLitteral(i2) -> NumericLitteral(i1 + i2)
+            | Subtract, NumericLitteral(i1), NumericLitteral(i2) -> NumericLitteral(i1 - i2)
+            | Divide, NumericLitteral(i1), NumericLitteral(i2) -> NumericLitteral(i1 / i2)
+            | Multiply, NumericLitteral(i1), NumericLitteral(i2) -> NumericLitteral(i1 * i2)
 
-        | Add, BoolLitteral b1, NumericLitteral n2 -> BoolLitteral(b1 + (int n2))
-        | Subtract, BoolLitteral b1, NumericLitteral n2 -> BoolLitteral(b1 - (int n2))
-        | Divide, BoolLitteral b1, NumericLitteral n2 -> BoolLitteral(b1 / (int n2))
-        | Multiply, BoolLitteral b1, NumericLitteral n2 -> BoolLitteral(b1 * (int n2))
+            | Add, BoolLitteral b1, BoolLitteral b2 -> BoolLitteral(b1 + b2)
+            | Subtract, BoolLitteral b1, BoolLitteral b2 -> BoolLitteral(b1 - b2)
+            | Divide, BoolLitteral b1, BoolLitteral b2 -> BoolLitteral(b1 / b2)
+            | Multiply, BoolLitteral b1, BoolLitteral b2 -> BoolLitteral(b1 * b2)
 
-        | Add, NumericLitteral n1, BoolLitteral b2 -> BoolLitteral((int n1) + b2)
-        | Subtract, NumericLitteral n1, BoolLitteral b2 -> BoolLitteral((int n1) - b2)
-        | Divide, NumericLitteral n1, BoolLitteral b2 -> BoolLitteral((int n1) / b2)
-        | Multiply, NumericLitteral n1, BoolLitteral b2 -> BoolLitteral((int n1) * b2)
+            | Add, BoolLitteral b1, NumericLitteral n2 -> BoolLitteral(b1 + (int n2))
+            | Subtract, BoolLitteral b1, NumericLitteral n2 -> BoolLitteral(b1 - (int n2))
+            | Divide, BoolLitteral b1, NumericLitteral n2 -> BoolLitteral(b1 / (int n2))
+            | Multiply, BoolLitteral b1, NumericLitteral n2 -> BoolLitteral(b1 * (int n2))
 
-        | Add, StringLitteral s1, StringLitteral s2 -> StringLitteral(s1 + s2)
+            | Add, NumericLitteral n1, BoolLitteral b2 -> BoolLitteral((int n1) + b2)
+            | Subtract, NumericLitteral n1, BoolLitteral b2 -> BoolLitteral((int n1) - b2)
+            | Divide, NumericLitteral n1, BoolLitteral b2 -> BoolLitteral((int n1) / b2)
+            | Multiply, NumericLitteral n1, BoolLitteral b2 -> BoolLitteral((int n1) * b2)
 
-        | opp, ArithmeticExpression a1, ArithmeticExpression a2 ->
-            let a1' = arithmeticExpression a1
-            let a2' = arithmeticExpression a2
-            arithmeticExpression (Arithmetic (opp, a1', a2'))
-        | opp, ArithmeticExpression a1, a2 ->
-            let a1' = arithmeticExpression a1
-            arithmeticExpression (Arithmetic (opp, a1', a2))
-        | opp, a1, ArithmeticExpression a2 ->
-            let a2' = arithmeticExpression a2
-            arithmeticExpression (Arithmetic(opp, a1, a2'))
-        | _ -> failwith "opperator not applyable on values"
+            | Add, StringLitteral s1, StringLitteral s2 -> StringLitteral(s1 + s2)
 
-    let rec equalityComparison opp expr1 expr2 =
-        match opp, expr1, expr2 with
-        | opp, ArithmeticExpression a1, ArithmeticExpression a2 ->
-            let e1 = arithmeticExpression a1
-            let e2 = arithmeticExpression a2
-            equalityComparison opp e1 e2
-        | opp, ArithmeticExpression a1, e2 ->
-            let e1 = arithmeticExpression a1
-            equalityComparison opp e1 e2
-        | opp, e1, ArithmeticExpression a2 ->
-            let e2 = arithmeticExpression a2
-            equalityComparison opp e1 e2
-        | Equals, l1, l2 -> l1 = l2
-        | NotEquals, l1, l2 -> l1 <> l2
-        | GreaterThan, NumericLitteral(l1), NumericLitteral(l2) -> l1 > l2
-        | GreaterThan,_,_ -> failwith "> is not a valid operator for this type"
-        | GreaterThanOrEquals, NumericLitteral(l1), NumericLitteral(l2) -> l1 >= l2
-        | GreaterThanOrEquals,_,_ -> failwith ">= is not a valid operator for this type"
-        | LesserThan, NumericLitteral(l1), NumericLitteral(l2) -> l1 < l2
-        | LesserThan,_,_ -> failwith "< is not a valid operator for this type"
-        | LesserThanOrEquals, NumericLitteral(l1), NumericLitteral(l2) -> l1 <= l2
-        | LesserThanOrEquals,_,_ -> failwith "<= is not a valid operator for this type"
+            | _ -> BoolLitteral(0)
 
+        | LitteralExpression.EqualityExpression (opp, a1, a2) ->
+            let l1 = getLitteralFromExpression a1
+            let l2 = getLitteralFromExpression a2
+
+            match (opp, l1, l2) with
+            | Equals, l1, l2 -> if l1 = l2 then BoolLitteral 1 else BoolLitteral 0
+            | NotEquals, l1, l2 -> if l1 <> l2 then BoolLitteral 1 else BoolLitteral 0
+            | GreaterThan, NumericLitteral(l1), NumericLitteral(l2) -> if l1 > l2 then BoolLitteral 1 else BoolLitteral 0
+            | GreaterThan,_,_ -> failwith "> is not a valid operator for this type"
+
+            | GreaterThanOrEquals, NumericLitteral(l1), NumericLitteral(l2) -> if l1 >= l2 then BoolLitteral 1 else BoolLitteral 0
+            | GreaterThanOrEquals,_,_ -> failwith ">= is not a valid operator for this type"
+
+            | LesserThan, NumericLitteral(l1), NumericLitteral(l2) -> if l1 < l2 then BoolLitteral 1 else BoolLitteral 0
+            | LesserThan,_,_ -> failwith "< is not a valid operator for this type"
+
+            | LesserThanOrEquals, NumericLitteral(l1), NumericLitteral(l2) -> if l1 <= l2 then BoolLitteral 1 else BoolLitteral 0
+            | LesserThanOrEquals,_,_ -> failwith "<= is not a valid operator for this type"
+        
     let rec evalSelectQuery (selectQuery:SelectQuery) = 
-        let (cols,from,joins,where) = selectQuery
+        let cols, from, joins, where = selectQuery
 
         let table =
             getTable from
             |> tryJoinTables joins
 
         Table.getSelectColumns table cols
+
+    and queryExpressionToLitteralExpression expr (row:string list) headers =
+        match expr with
+        | QueryExpression.ColumnIdentifier ci ->
+            row.[Table.getheaderIndex headers ci]
+            |> guessDataTypeOfStringContent
+            |> LitteralExpression.Litteral
+
+        | QueryExpression.Litteral l -> LitteralExpression.Litteral (l)
+
+        | QueryExpression.ArithmeticExpression (opp, q1, q2) ->
+            let q1' = queryExpressionToLitteralExpression q1 row headers
+            let q2' = queryExpressionToLitteralExpression q2 row headers
+            LitteralExpression.ArithmeticExpression (opp, q1', q2')
+
+        | QueryExpression.EqualityExpression (opp, q1, q2) ->
+            let q1' = queryExpressionToLitteralExpression q1 row headers
+            let q2' = queryExpressionToLitteralExpression q2 row headers
+            LitteralExpression.EqualityExpression (opp, q1', q2')
 
     and fulljoin originTable tableToJoin =
         let mergedHeaders = originTable.headers @ tableToJoin.headers
@@ -116,150 +132,29 @@ module Interpreter =
 
         Table.create None mergedHeaders newTableRows
 
-    and tryJoinTables (joins: Join list) originTable =
+    and tryJoinTables (joins: Join list) table =
         match joins with
-        | [] -> originTable
-        | Full(from) :: t -> getTable from |> fulljoin originTable
+        | [] -> table
+        | Full from :: t ->
+            let fullyjoined = getTable from |> fulljoin table
+            tryJoinTables t fullyjoined
         | Inner(from,expressions) :: t ->
-            let tableToJoin = getTable from
-            let fullyJoinedTable = fulljoin originTable tableToJoin
-
+            let fullyJoinedTable = getTable from |> fulljoin table
             let expr = expressions.Head //only handles one expression AND need to recursivly compute all additions
-            
-            fullyJoinedTable.contentRows
-            |> List.choose(fun row ->
-                match expr with
-                | EqualityExpression(op, ColumnExpression name1, ColumnExpression name2) ->
 
-                    let v1 = row.[Table.getheaderIndex fullyJoinedTable name1] |> guessDataTypeOfStringContent
-                    let v2 = row.[Table.getheaderIndex fullyJoinedTable name2] |> guessDataTypeOfStringContent
+            let innerjoined =
+                fullyJoinedTable.contentRows
+                |> List.choose(fun row ->
 
-                    if equalityComparison op v1 v2 then Some row else None
+                    let litteral =
+                        queryExpressionToLitteralExpression expr row fullyJoinedTable.headers
+                        |> getLitteralFromExpression
 
-                | EqualityExpression(op, ColumnExpression name, (NumericLitteral(i))) ->
-                    let tableV = row.[Table.getheaderIndex fullyJoinedTable name] |> float
-                    if equalityComparison op (NumericLitteral tableV) (NumericLitteral i) then Some row else None
+                    if litteralIsTrue litteral then Some row else None )
+                |> Table.create None fullyJoinedTable.headers
 
-                | EqualityExpression(op, (NumericLitteral(i)), ColumnExpression name) ->
-                    let tableV = row.[Table.getheaderIndex fullyJoinedTable name] |> float
-                    if equalityComparison op (NumericLitteral i) (NumericLitteral tableV) then Some row else None
-
-                | EqualityExpression(op, (StringLitteral s), ColumnExpression name) ->
-                    let tableV = row.[Table.getheaderIndex fullyJoinedTable name]
-                    if (equalityComparison op (StringLitteral s) (StringLitteral tableV)) || (equalityComparison Equals (StringLitteral  ("\"" + s + "\"")) (StringLitteral tableV)) then Some row else None 
-
-                | EqualityExpression(op, ColumnExpression name, (StringLitteral s)) ->
-                    let tableV = row.[Table.getheaderIndex fullyJoinedTable name]
-                    if (equalityComparison op (StringLitteral tableV) (StringLitteral s)) || (equalityComparison Equals (StringLitteral  ("\"" + s + "\"")) (StringLitteral tableV)) then Some row else None
-
-                | EqualityExpression(op,  (BoolLitteral b), ColumnExpression name) ->
-                    let tableV = row.[Table.getheaderIndex fullyJoinedTable name]
-                    let tablebool = if tableV = "true" then (BoolLitteral 1) else (BoolLitteral 0)
-                    if (equalityComparison op (BoolLitteral b) tablebool) then Some row else None
-
-                | EqualityExpression(op, ColumnExpression name, (BoolLitteral b)) ->
-                    let tableV = row.[Table.getheaderIndex fullyJoinedTable name]
-                    let tablebool = if tableV = "true" then (BoolLitteral 1) else (BoolLitteral 0)
-                    if (equalityComparison op tablebool (BoolLitteral b)) then Some row else None
-
-                | EqualityExpression(op, ArithmeticExpression a1, ArithmeticExpression a2) ->
-
-                    // THIS IS DONE TO a1 doesnt contain a specificcolum
-                    // however this must be done recursivly
-                    let e1 =
-                        match a1 with
-                        | op, ColumnExpression c, ColumnExpression c2 ->
-                            let e1 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
-                            let e2 = row.[Table.getheaderIndex fullyJoinedTable c2] |> guessDataTypeOfStringContent
-                            arithmeticExpression (op,e1,e2)
-                        | op, ColumnExpression c, e2 ->
-                            let e1 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
-                            arithmeticExpression (op,e1,e2)
-                        | op, e1, ColumnExpression c ->
-                            let e2 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
-                            arithmeticExpression (op,e1,e2)
-                        | _ -> arithmeticExpression a1
-
-                    let e2 =
-                        match a2 with
-                        | op, ColumnExpression c, ColumnExpression c2 ->
-                            let e1 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
-                            let e2 = row.[Table.getheaderIndex fullyJoinedTable c2] |> guessDataTypeOfStringContent
-                            arithmeticExpression (op,e1,e2)
-                        | op, ColumnExpression c, e2 ->
-                            let e1 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
-                            arithmeticExpression (op,e1,e2)
-                        | op, e1, ColumnExpression c ->
-                            let e2 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
-                            arithmeticExpression (op,e1,e2)
-                        | _ -> arithmeticExpression a2
-
-                    if (equalityComparison op e1 e2) then Some row else None
-
-                | EqualityExpression(op, ArithmeticExpression a1, ColumnExpression name) ->
-
-                    let e1 =
-                        match a1 with
-                        | op, ColumnExpression c, ColumnExpression c2 ->
-                            let e1 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
-                            let e2 = row.[Table.getheaderIndex fullyJoinedTable c2] |> guessDataTypeOfStringContent
-                            arithmeticExpression (op,e1,e2)
-                        | op, ColumnExpression c, e2 ->
-                            let e1 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
-                            arithmeticExpression (op,e1,e2)
-                        | op, e1, ColumnExpression c ->
-                            let e2 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
-                            arithmeticExpression (op,e1,e2)
-                        | _ -> arithmeticExpression a1
-
-                    let e2 = row.[Table.getheaderIndex fullyJoinedTable name] |> guessDataTypeOfStringContent
-                    if (equalityComparison op e1 e2) then Some row else None
-
-                | EqualityExpression(op, ColumnExpression name, ArithmeticExpression a2) ->
-                    let e2 =
-                        match a2 with
-                        | op, ColumnExpression c, ColumnExpression c2 ->
-                            let e1 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
-                            let e2 = row.[Table.getheaderIndex fullyJoinedTable c2] |> guessDataTypeOfStringContent
-                            arithmeticExpression (op,e1,e2)
-                        | op, ColumnExpression c, e2 ->
-                            let e1 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
-                            arithmeticExpression (op,e1,e2)
-                        | op, e1, ColumnExpression c ->
-                            let e2 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
-                            arithmeticExpression (op,e1,e2)
-                        | _ -> arithmeticExpression a2
-
-                    let e1 = row.[Table.getheaderIndex fullyJoinedTable name] |> guessDataTypeOfStringContent
-                    if (equalityComparison op e1 e2) then Some row else None
-
-                | EqualityExpression(op, ArithmeticExpression a1, e2) ->
-
-                    let e1 =
-                        match a1 with
-                        | (op,ColumnExpression( c), ColumnExpression(c2)) ->
-                            let e1 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
-                            let e2 = row.[Table.getheaderIndex fullyJoinedTable c2] |> guessDataTypeOfStringContent
-                            arithmeticExpression (op,e1,e2)
-                        | op, ColumnExpression c, e2 ->
-                            let e1 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
-                            arithmeticExpression (op,e1,e2)
-                        | op, e1, ColumnExpression c ->
-                            let e2 = row.[Table.getheaderIndex fullyJoinedTable c] |> guessDataTypeOfStringContent
-                            arithmeticExpression (op,e1,e2)
-                        | _ -> arithmeticExpression a1
-
-                    if (equalityComparison op e1 e2) then Some row else None
-
-                | EqualityExpression(op, e1, ArithmeticExpression a2) ->
-                    let e2 = arithmeticExpression a2
-                    if (equalityComparison op e1 e2) then Some row else None
-
-                | (BoolLitteral(i)) when i = 0 -> None 
-                | _ -> Some row )
-            |> Table.create None fullyJoinedTable.headers
-
-
+            tryJoinTables t innerjoined
+        | Left _ :: t -> failwith "not implemented"
 
     and getTable from : Tabel =
         match from with

@@ -9,17 +9,24 @@ module ParserDomain =
 
     type SpecificColumn = string Option * string
 
-    type Expression =
-        | ColumnExpression of SpecificColumn
+    type Litteral =
         | NumericLitteral of float
         | StringLitteral of string
         | BoolLitteral of int
-        | ArithmeticExpression of Arithmetic
-        | EqualityExpression of Equality
 
-    and Arithmetic = ArithmeticOpperator * Expression * Expression
-    and Equality = EqualityOpperator * Expression * Expression
+    type ArithmeticExpression<'a> = ArithmeticOpperator * 'a * 'a
+    type EqualityExpression<'a> = EqualityOpperator * 'a * 'a
 
+    and LitteralExpression =
+        | Litteral of Litteral
+        | ArithmeticExpression of ArithmeticExpression<LitteralExpression>
+        | EqualityExpression of EqualityExpression<LitteralExpression>
+
+    and QueryExpression =
+        | ColumnIdentifier of SpecificColumn
+        | Litteral of Litteral
+        | ArithmeticExpression of ArithmeticExpression<QueryExpression>
+        | EqualityExpression of EqualityExpression<QueryExpression>
 
     type Column =
         | Specifict of SpecificColumn
@@ -29,14 +36,14 @@ module ParserDomain =
         | TableName of name: string * alias: string Option
         | SubQuery of subQuery: SelectQuery * alias: string Option
 
-     and InnerJoin = From * Expression list
-     and LeftJoin = From * Expression list
+     and InnerJoin = From * QueryExpression list
+     and LeftJoin = From * QueryExpression list
      and Join =
          | Inner of InnerJoin
          | Left of LeftJoin
          | Full of From
 
-    and SelectQuery = Column List * From * Join list * Expression list
+    and SelectQuery = Column List * From * Join list * QueryExpression list
     and CreateQuery = string * From
 
     type Query =
@@ -61,8 +68,8 @@ module Parser =
     let fromType, fromTypeRef = createParserForwardedToRef<From, unit>()
     let joinType, joinTypeRef = createParserForwardedToRef<Join, unit>()
 
-    let oppa = OperatorPrecedenceParser<Expression,_,_>()
-    let oppc = OperatorPrecedenceParser<Expression, _, _>()
+    let oppa = OperatorPrecedenceParser<QueryExpression,_,_>()
+    let oppc = OperatorPrecedenceParser<QueryExpression, _, _>()
 
     let parithmetic = oppa.ExpressionParser
     let pcomparison = oppc.ExpressionParser
@@ -81,10 +88,10 @@ module Parser =
     let intlitteral : Parser<_,unit> = pint32 .>> spaces |>> fun x -> (float x)
     let floatlitteral = pfloat .>> spaces
 
-    let numberExpression = (floatlitteral <|> intlitteral) |>> NumericLitteral
-    let stringExpression = doubleQoutedString .>> spaces |>> StringLitteral
-    let columnExpression = betweenString "'" "'" specificColumn |>> ColumnExpression .>> spaces
-    let boolExpression = ((stringReturn "true" (BoolLitteral 1)) <|> (stringReturn "false" (BoolLitteral 0)))
+    let numberExpression = (floatlitteral <|> intlitteral) |>> NumericLitteral |>> Litteral
+    let stringExpression = doubleQoutedString .>> spaces |>> StringLitteral |>> Litteral
+    let columnExpression = betweenString "'" "'" specificColumn |>> ColumnIdentifier .>> spaces
+    let boolExpression = ((stringReturn "true" (BoolLitteral 1)) <|> (stringReturn "false" (BoolLitteral 0))) |>> Litteral
  
     let manyEqualityExpression = 
         let seperator = pstring "&&" .>> spaces 
