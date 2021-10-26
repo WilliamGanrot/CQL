@@ -2,6 +2,8 @@ namespace CQL.Interpreter
 open CQL.Table
 open CQL.Parser
 open System.IO
+open System.Globalization
+open System
 
 module Interpreter =
 
@@ -11,9 +13,11 @@ module Interpreter =
         | _ -> None
 
     let (|StringIsFloat|_|) (str:string) =
-        match System.Double.TryParse str with
-        | true, f -> Some f
-        | _ -> None
+
+        let stringFloatWithComma = str.Replace(".",",")
+        match System.Double.TryParse stringFloatWithComma with
+        | true, f -> Some (float f)
+        | z-> None
 
     let (|StringIsFalse|_|) (str:string) =
         match str = "false" || str = "FALSE" with

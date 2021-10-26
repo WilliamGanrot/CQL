@@ -46,7 +46,6 @@ let ``translate queryExpression to LitteralExpression without any columspecific 
 [<InlineData("\"123f4\"")>]
 [<InlineData("\"123f 4\"")>]
 [<InlineData("\"12.34 \"")>]
-[<InlineData("12 34")>]
 [<InlineData(" .12 34 ")>]
 [<InlineData(" 12. 34 ")>]
 [<InlineData("\"true\"")>]
@@ -58,7 +57,6 @@ let ``translate queryExpression to LitteralExpression without any columspecific 
 [<InlineData("'fweouf weg'")>]
 [<InlineData("'1234'")>]
 [<InlineData("'123f4'")>]
-[<InlineData("'123f 4'")>]
 [<InlineData("'12.34 '")>]
 [<InlineData("'true'")>]
 [<InlineData("'TRUE'")>]
@@ -95,9 +93,14 @@ let ``guessDataTypeOfStringContent when expecting to return Boollitteral true`` 
 [<InlineData("2342.4589",2342.4589)>]
 [<InlineData("2.456 ",2.456)>]
 [<InlineData("0.1231",0.1231)>]
-[<InlineData(".1231",0.1231)>]
+[<InlineData("0.1",0.1)>]
 [<InlineData(".1",0.1)>]
-[<InlineData(".1",0.1)>]
+[<InlineData(",1",0.1)>]
+[<InlineData("2,0", 2.0)>]
+[<InlineData("2342,4589",2342.4589)>]
+[<InlineData("2,456 ",2.456)>]
+[<InlineData("0,1231",0.1231)>]
+[<InlineData("0,1",0.1)>]
 let ``guessDataTypeOfStringContent when expecting to return NumericLitteral of float`` (s,e) =
     let litteral = Interpreter.guessDataTypeOfStringContent s
     match litteral with
