@@ -34,9 +34,9 @@ Select
   ([All], TableName ("person.txt", Some "p"),
    [Inner
       (TableName ("adress.txt", Some "a"),
-       [EqualityExpression
-          (Equals, ColumnIdentifier (Some "a", "ownerid"),
-           ColumnIdentifier (Some "p", "userid"))])],
+       EqualityExpression
+         (Equals, ColumnIdentifier (Some "a", "ownerid"),
+          ColumnIdentifier (Some "p", "userid")))],
    [Where
       (EqualityExpression
          (GreaterThan,
@@ -47,7 +47,7 @@ Select
     Where
       (EqualityExpression
          (Equals, ColumnIdentifier (Some "a", "country"),
-          Litteral (StringLitteral "Sweden")))])])
+          Litteral (StringLitteral "Sweden")))])
 ```
 
 The domain model will then get evaluated and result in the following table.
