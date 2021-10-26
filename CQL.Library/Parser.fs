@@ -42,8 +42,9 @@ module ParserDomain =
          | Inner of InnerJoin
          | Left of LeftJoin
          | Full of From
+    and Where = Where of QueryExpression
 
-    and SelectQuery = Column List * From * Join list * QueryExpression list
+    and SelectQuery = Column List * From * Join list * Where list
     and CreateQuery = string * From
 
     type Query =
@@ -98,7 +99,7 @@ module Parser =
         sepBy1 pcomparison seperator
 
     let selectColumns = between (pstring "'") (pstring "'") (all <|> (specificColumn |>> Specifict))
-    let where = pstring "where" >>. spaces >>. pcomparison .>> spaces
+    let where = pstring "where" >>. spaces >>. pcomparison .>> spaces |>> Where
     let manySelectParameter = 
         let seperator = pstring "," .>> spaces 
         sepBy1 selectColumns seperator

@@ -34,14 +34,13 @@ module Interpreter =
         | true -> Some str
         | _ -> None
 
-    let guessDataTypeOfStringContent s =
-        match s with
+    let guessDataTypeOfStringContent = function
         | StringIsQouted s -> StringLitteral s
         | StringIsFalse i -> BoolLitteral i
         | StringIsTrue i -> BoolLitteral i
         | StringIsFloat f -> NumericLitteral f
         | StringIsInt s -> NumericLitteral (float s)
-        | _ -> StringLitteral s
+        | s -> StringLitteral s
 
     let litteralIsTrue = function
         | BoolLitteral l when l = 0 -> false
@@ -99,11 +98,12 @@ module Interpreter =
             | LesserThanOrEquals,_,_ -> failwith "<= is not a valid operator for this type"
         
     let rec evalSelectQuery (selectQuery:SelectQuery) = 
-        let cols, from, joins, where = selectQuery
+        let cols, from, joins, wheres = selectQuery
 
         let table =
             getTable from
-            |> tryJoinTables joins
+            |> joinTables joins
+            |> evaluateWheres wheres
 
         Table.getSelectColumns table cols
 
@@ -136,12 +136,26 @@ module Interpreter =
 
         Table.create None mergedHeaders newTableRows
 
-    and tryJoinTables (joins: Join list) table =
+    and evaluateWheres wheres table =
+        match wheres with
+        | [] -> table
+        | Where queryExpression :: t ->
+            let table' =
+                table.contentRows
+                |> List.choose (fun row ->
+                    let litteral =
+                        queryExpressionToLitteralExpression queryExpression row table.headers
+                        |> getLitteralFromExpression
+                    if litteralIsTrue litteral then Some row else None)
+                |> Table.create None table.headers
+            evaluateWheres t table'
+
+    and joinTables joins table =
         match joins with
         | [] -> table
         | Full from :: t ->
             let fullyjoined = getTable from |> fulljoin table
-            tryJoinTables t fullyjoined
+            joinTables t fullyjoined
         | Inner(from,expressions) :: t ->
             let fullyJoinedTable = getTable from |> fulljoin table
             let expr = expressions.Head //only handles one expression AND need to recursivly compute all additions
@@ -157,7 +171,7 @@ module Interpreter =
                     if litteralIsTrue litteral then Some row else None )
                 |> Table.create None fullyJoinedTable.headers
 
-            tryJoinTables t innerjoined
+            joinTables t innerjoined
         | Left _ :: t -> failwith "not implemented"
 
     and getTable from : Tabel =

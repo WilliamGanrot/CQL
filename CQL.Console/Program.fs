@@ -8,7 +8,7 @@ open CQL.Interpreter
 let main argv =
 
     //let q = "select '*' from 'person.txt' as 'p' inner join 'adress.txt' as 'a' 'a.ownerid' + 'p.userid' + 'p.userid' = 'p.userid' * 2 + 'a.ownerid'"
-    let q = "select '*' from 'person.txt' as 'p' inner join 'adress.txt' as 'a' 8 + 2 > 1 * 10 / 2"
+    let q = "select '*' from 'person.txt' as 'p' inner join 'adress.txt' as 'a' 'a.ownerid' = 'p.userid' where 2020 - 'p.birthyear' > 18 where 'a.country' = \"Sweden\""
     match (run Parser.queryType q) with
     | Success(result, _, _)  ->
         printfn "%A" result
