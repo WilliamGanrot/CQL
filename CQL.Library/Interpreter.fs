@@ -156,9 +156,8 @@ module Interpreter =
         | Full from :: t ->
             let fullyjoined = getTable from |> fulljoin table
             joinTables t fullyjoined
-        | Inner(from,expressions) :: t ->
+        | Inner(from,expr) :: t ->
             let fullyJoinedTable = getTable from |> fulljoin table
-            let expr = expressions.Head //only handles one expression AND need to recursivly compute all additions
 
             let innerjoined =
                 fullyJoinedTable.contentRows

@@ -36,8 +36,8 @@ module ParserDomain =
         | TableName of name: string * alias: string Option
         | SubQuery of subQuery: SelectQuery * alias: string Option
 
-     and InnerJoin = From * QueryExpression list
-     and LeftJoin = From * QueryExpression list
+     and InnerJoin = From * QueryExpression
+     and LeftJoin = From * QueryExpression
      and Join =
          | Inner of InnerJoin
          | Left of LeftJoin
@@ -93,10 +93,6 @@ module Parser =
     let stringExpression = doubleQoutedString .>> spaces |>> StringLitteral |>> Litteral
     let columnExpression = betweenString "'" "'" specificColumn |>> ColumnIdentifier .>> spaces
     let boolExpression = ((stringReturn "true" (BoolLitteral 1)) <|> (stringReturn "false" (BoolLitteral 0))) |>> Litteral
- 
-    let manyEqualityExpression = 
-        let seperator = pstring "&&" .>> spaces 
-        sepBy1 pcomparison seperator
 
     let selectColumns = between (pstring "'") (pstring "'") (all <|> (specificColumn |>> Specifict))
     let where = pstring "where" >>. spaces >>. pcomparison .>> spaces |>> Where
@@ -107,8 +103,8 @@ module Parser =
     let create = spaces >>. pstring "create" >>. spaces1 >>. singleQoutedString .>> spaces
     let select = spaces >>. pstring "select" >>. spaces1 >>. manySelectParameter .>> spaces1
 
-    let innerjoin = pstring "inner join" >>. spaces1 >>. fromType .>> spaces .>>. manyEqualityExpression .>> spaces |>> InnerJoin
-    let leftjoin = pstring "left join" >>. spaces1 >>. fromType .>> spaces .>>. manyEqualityExpression .>> spaces |>> LeftJoin
+    let innerjoin = pstring "inner join" >>. spaces1 >>. fromType .>> spaces .>>. pcomparison .>> spaces |>> InnerJoin
+    let leftjoin = pstring "left join" >>. spaces1 >>. fromType .>> spaces .>>. pcomparison .>> spaces |>> LeftJoin
     let fulljoin = pstring "full join" >>. spaces1 >>. fromType .>> spaces
 
     let joins = opt(many1 joinType) |>> (fun joinlist ->
