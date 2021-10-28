@@ -29,6 +29,11 @@ module Interpreter =
         | true -> Some 1
         | _ -> None
 
+    let (|StringIsNull|_|) (str:string) =
+        match str = "null" || str = "NULL" with
+        | true -> Some str
+        | _ -> None
+
     let (|StringIsQouted|_|) (str:string) =
         match str.[0] = '"' && str.[str.Length-1] = '"' || str.[0] = ''' && str.[str.Length-1] = ''' with
         | true -> Some str
@@ -38,6 +43,7 @@ module Interpreter =
         | StringIsQouted s -> StringLitteral s
         | StringIsFalse i -> BoolLitteral i
         | StringIsTrue i -> BoolLitteral i
+        | StringIsNull _ -> NullLitteral
         | StringIsFloat f -> NumericLitteral f
         | StringIsInt s -> NumericLitteral (float s)
         | s -> StringLitteral s
@@ -98,7 +104,7 @@ module Interpreter =
             | LesserThanOrEquals,_,_ -> failwith "<= is not a valid operator for this type"
         
     let rec evalSelectQuery (selectQuery:SelectQuery) = 
-        let cols, from, joins, wheres = selectQuery
+        let cols, from, joins, wheres, order = selectQuery
 
         let table =
             getTable from
@@ -127,11 +133,11 @@ module Interpreter =
             LitteralExpression.EqualityExpression (opp, q1', q2')
 
     and fulljoin originTable tableToJoin =
-        let mergedHeaders = originTable.headers @ tableToJoin.headers
+        let mergedHeaders = originTable.Headers @ tableToJoin.Headers
 
         let newTableRows =
-            [for originRow in originTable.contentRows do
-                for rowToJoin in tableToJoin.contentRows do
+            [for originRow in originTable.ContentRows do
+                for rowToJoin in tableToJoin.ContentRows do
                     originRow @ rowToJoin]
 
         Table.create None mergedHeaders newTableRows
@@ -141,13 +147,13 @@ module Interpreter =
         | [] -> table
         | Where queryExpression :: t ->
             let table' =
-                table.contentRows
+                table.ContentRows
                 |> List.choose (fun row ->
                     let litteral =
-                        queryExpressionToLitteralExpression queryExpression row table.headers
+                        queryExpressionToLitteralExpression queryExpression row table.Headers
                         |> getLitteralFromExpression
                     if litteralIsTrue litteral then Some row else None)
-                |> Table.create None table.headers
+                |> Table.create None table.Headers
             evaluateWheres t table'
 
     and joinTables joins table =
@@ -160,15 +166,15 @@ module Interpreter =
             let fullyJoinedTable = getTable from |> fulljoin table
 
             let innerjoined =
-                fullyJoinedTable.contentRows
+                fullyJoinedTable.ContentRows
                 |> List.choose(fun row ->
 
                     let litteral =
-                        queryExpressionToLitteralExpression expr row fullyJoinedTable.headers
+                        queryExpressionToLitteralExpression expr row fullyJoinedTable.Headers
                         |> getLitteralFromExpression
 
                     if litteralIsTrue litteral then Some row else None )
-                |> Table.create None fullyJoinedTable.headers
+                |> Table.create None fullyJoinedTable.Headers
 
             joinTables t innerjoined
         | Left _ :: t -> failwith "not implemented"
@@ -182,12 +188,12 @@ module Interpreter =
             Table.create alias columns contentRows
         | SubQuery (select,alias) ->
             let table = evalSelectQuery select
-            let newheaders = table.headers |> List.map (fun (_,h) -> (alias,h) |> SpecificColumn)
-            {table with headers = newheaders; alias = alias}
+            let newheaders = table.Headers |> List.map (fun (_,h) -> (alias,h) |> SpecificColumn)
+            {table with Headers = newheaders; Alias = alias}
 
     let eval query =
         match query with
-        | Select(cols,from,joins,where) -> SelectQuery(cols,from,joins,where) |> evalSelectQuery |> Table.printTable
+        | Select(cols,from,joins,where, order) -> SelectQuery(cols,from,joins,where,order) |> evalSelectQuery |> Table.printTable
         | Create(name, from) ->
             getTable from |> Table.saveTableAsCsv name |> ignore
             printfn "table %A saved" name |> ignore
