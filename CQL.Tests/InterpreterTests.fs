@@ -131,7 +131,7 @@ let ``test order by descending on int value`` () =
     let order = Order((None, "col2"), Decending)
     let table =
         Table.create None headers rows
-        |> Interpreter.orderTable (Some order)
+        |> Interpreter.maybeOrder (Some order)
 
     Assert.Equal ("4", table.ContentRows.[0].[1])
     Assert.Equal ("qwer", table.ContentRows.[0].[0])
@@ -156,7 +156,7 @@ let ``test order by ascending on int value`` () =
     let order = Order((None, "col2"), Ascending)
     let table =
         Table.create None headers rows
-        |> Interpreter.orderTable (Some order)
+        |> Interpreter.maybeOrder (Some order)
 
     Assert.Equal ("1", table.ContentRows.[0].[1])
     Assert.Equal ("ergr", table.ContentRows.[0].[0])
@@ -182,7 +182,7 @@ let ``test order by descending on string value`` () =
     let order = Order((None, "col2"), Decending)
     let table =
         Table.create None headers rows
-        |> Interpreter.orderTable (Some order)
+        |> Interpreter.maybeOrder (Some order)
 
     Assert.Equal ("cewehrih", table.ContentRows.[0].[1])
     Assert.Equal ("ergr", table.ContentRows.[0].[0])
@@ -207,7 +207,7 @@ let ``test order by ascending on string value`` () =
     let order = Order((None, "col2"), Ascending)
     let table =
         Table.create None headers rows
-        |> Interpreter.orderTable (Some order)
+        |> Interpreter.maybeOrder (Some order)
 
     Assert.Equal ("aaefihoi", table.ContentRows.[0].[1])
     Assert.Equal ("htjrt", table.ContentRows.[0].[0])

@@ -44,11 +44,13 @@ module ParserDomain =
          | Left of LeftJoin
          | Full of From
 
+    and Top = Top of int
     and Where = Where of QueryExpression
     and Direction = Ascending | Decending
     and Order = SpecificColumn * Direction
+    
 
-    and SelectQuery = Column List * From * Join list * Where list * Order Option
+    and SelectQuery = Column List * From * Join list * Where list * Order Option * Top Option
     and CreateQuery = string * From
 
     type Query =
@@ -79,18 +81,18 @@ module Parser =
     let parithmetic = oppa.ExpressionParser
     let pcomparison = oppc.ExpressionParser
 
-    let alphastring : Parser<_,unit> = many1Chars (anyOf alphabet)
+    let alphastring = many1Chars (anyOf alphabet)
     let manyCharsBetween popen pclose pchar = popen >>? manyCharsTill pchar pclose
     let anyStringBetween popen pclose = manyCharsBetween popen pclose anyChar
     let anyStringBetweenStrings s1 s2 = anyStringBetween (pstring s1) (pstring s2)
     let singleQoutedString = anyStringBetweenStrings "'" "'"
-    let doubleQoutedString : Parser<_,unit> = anyStringBetweenStrings "\"" "\""
+    let doubleQoutedString = anyStringBetweenStrings "\"" "\""
     let betweenString s1 s2 p = between (pstring s1) (pstring s2) p
 
     let all = stringReturn "*" All
     let specificColumn = opt(attempt (manyCharsTill (anyOf alphabet) (pstring "."))) .>>. alphastring
 
-    let intlitteral : Parser<_,unit> = pint32 .>> spaces |>> fun x -> (float x)
+    let intlitteral = pint32 .>> spaces |>> fun x -> (float x)
     let floatlitteral = pfloat .>> spaces
 
     let numberExpression = (floatlitteral <|> intlitteral) |>> NumericLitteral |>> Litteral
@@ -98,10 +100,12 @@ module Parser =
     let columnExpression = betweenString "'" "'" specificColumn |>> ColumnIdentifier .>> spaces
     let boolExpression = ((stringReturn "true" (BoolLitteral 1)) <|> (stringReturn "false" (BoolLitteral 0))) |>> Litteral
 
+    let top = pstring "top" >>. spaces1 >>. pint32 |>> Top
+
     let desc = stringReturn "desc" Decending
     let asc = stringReturn "asc" Ascending
     let direction = desc <|> asc
-    let order = (spaces >>. pstring "order by" .>> spaces) >>. (betweenString "'" "'" specificColumn) .>> spaces1 .>>. direction |>> (fun (a, b) -> Order(a,b))
+    let order = (spaces >>. pstring "order by" .>> spaces) >>. (betweenString "'" "'" specificColumn) .>> spaces1 .>>. direction |>> Order
 
     let selectColumns = between (pstring "'") (pstring "'") (all <|> (specificColumn |>> Specifict))
     let where = pstring "where" >>. spaces >>. pcomparison .>> spaces |>> Where
@@ -130,11 +134,11 @@ module Parser =
     let from = pstring "from" .>> spaces1 >>. fromType .>> spaces 
     let tableName = singleQoutedString .>>. (spaces >>. alias)
 
-    let selectQuery = select .>>. from .>>. joins .>>. wheres .>>. opt(attempt order) .>> spaces |>> fun((((a,b),c),d),e) -> SelectQuery(a,b,c,d,e)
+    let selectQuery = select .>>. from .>>. joins .>>. wheres .>>. opt(attempt order) .>> spaces .>>. opt(attempt top) |>> fun (((((f,e),d),c),b),a) -> SelectQuery(f,e,d,c,b,a)
     let selectQueryWitheof = selectQuery .>> eof 
     let subSelectQuery = ((between (pstring "(") (pstring ")") (selectQuery .>> spaces)) .>> spaces) .>>. alias
 
-    let createQuery = create .>>. fromType .>> spaces |>> fun (filename,(from)) -> CreateQuery(filename,from)
+    let createQuery = create .>>. fromType .>> spaces |>> CreateQuery
 
     do queryTypeRef := choice [selectQueryWitheof |>> Select
                                createQuery |>> Create]

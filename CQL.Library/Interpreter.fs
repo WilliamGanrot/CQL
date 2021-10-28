@@ -52,7 +52,7 @@ module Interpreter =
         | BoolLitteral l when l = 0 -> false
         | _ -> true
 
-    let rec getLitteralFromExpression (aexpr : LitteralExpression) : Litteral =
+    let rec getLitteralFromExpression aexpr =
         match aexpr with
         | LitteralExpression.Litteral l -> l
         | LitteralExpression.ArithmeticExpression (opp, a1, a2) ->
@@ -122,16 +122,7 @@ module Interpreter =
             let q2' = queryExpressionToLitteralExpression q2 row headers
             LitteralExpression.EqualityExpression (opp, q1', q2')
 
-    let rec evalSelectQuery (selectQuery:SelectQuery) = 
-        let cols, from, joins, wheres, order = selectQuery
-
-        getTable from
-        |> joinTables joins
-        |> evaluateWheres wheres
-        |> orderTable order
-        |> Table.getSelectColumns cols
-
-    and orderTable order table =
+    let maybeOrder order table =
         match order with
         | None -> table
         | Some (field, direction) ->
@@ -147,6 +138,21 @@ module Interpreter =
             orderdIndexes
             |> List.map(fun (i,_) -> table.ContentRows.[i])
             |> Table.create None table.Headers
+
+    let maybeTop top table =
+        match top with
+        | None -> table
+        | Some (Top top) -> Table.create None table.Headers table.ContentRows.[0..top-1]
+
+    let rec evalSelectQuery (selectQuery: SelectQuery) = 
+        let cols, from, joins, wheres, order, top = selectQuery
+
+        getTable from
+        |> joinTables joins
+        |> evaluateWheres wheres
+        |> maybeOrder order
+        |> maybeTop top
+        |> Table.getSelectColumns cols
 
     and evaluateWheres wheres table =
         match wheres with
@@ -207,10 +213,9 @@ module Interpreter =
             let newheaders = table.Headers |> List.map (fun (_,h) -> (alias,h) |> SpecificColumn)
             {table with Headers = newheaders; Alias = alias}
 
-
     let eval query =
         match query with
-        | Select(cols,from,joins,where, order) -> SelectQuery(cols,from,joins,where,order) |> evalSelectQuery |> Table.printTable
+        | Select(cols,from,joins,where, order,top) -> SelectQuery(cols,from,joins,where,order,top) |> evalSelectQuery |> Table.printTable
         | Create(name, from) ->
             getTable from |> Table.saveTableAsCsv name |> ignore
             printfn "table %A saved" name |> ignore
