@@ -102,18 +102,8 @@ module Interpreter =
 
             | LesserThanOrEquals, NumericLitteral(l1), NumericLitteral(l2) -> if l1 <= l2 then BoolLitteral 1 else BoolLitteral 0
             | LesserThanOrEquals,_,_ -> failwith "<= is not a valid operator for this type"
-        
-    let rec evalSelectQuery (selectQuery:SelectQuery) = 
-        let cols, from, joins, wheres, order = selectQuery
 
-        let table =
-            getTable from
-            |> joinTables joins
-            |> evaluateWheres wheres
-
-        Table.getSelectColumns table cols
-
-    and queryExpressionToLitteralExpression expr (row:string list) headers =
+    let rec queryExpressionToLitteralExpression expr (row:string list) headers =
         match expr with
         | QueryExpression.ColumnIdentifier ci ->
             row.[Table.getheaderIndex headers ci]
@@ -132,15 +122,31 @@ module Interpreter =
             let q2' = queryExpressionToLitteralExpression q2 row headers
             LitteralExpression.EqualityExpression (opp, q1', q2')
 
-    and fulljoin originTable tableToJoin =
-        let mergedHeaders = originTable.Headers @ tableToJoin.Headers
+    let rec evalSelectQuery (selectQuery:SelectQuery) = 
+        let cols, from, joins, wheres, order = selectQuery
 
-        let newTableRows =
-            [for originRow in originTable.ContentRows do
-                for rowToJoin in tableToJoin.ContentRows do
-                    originRow @ rowToJoin]
+        getTable from
+        |> joinTables joins
+        |> evaluateWheres wheres
+        |> orderTable order
+        |> Table.getSelectColumns cols
 
-        Table.create None mergedHeaders newTableRows
+    and orderTable order table =
+        match order with
+        | None -> table
+        | Some (field, direction) ->
+
+            let headerIndex = Table.getheaderIndex table.Headers field
+            let litteralColumnToSort = table.ContentRows |> List.mapi(fun i row -> i, row.[headerIndex])
+
+            let orderdIndexes = 
+                match direction with
+                | Ascending -> litteralColumnToSort |> List.sortBy(fun (_, l) -> l)
+                | Decending -> litteralColumnToSort |> List.sortByDescending(fun (_, l) -> l)
+
+            orderdIndexes
+            |> List.map(fun (i,_) -> table.ContentRows.[i])
+            |> Table.create None table.Headers
 
     and evaluateWheres wheres table =
         match wheres with
@@ -155,6 +161,16 @@ module Interpreter =
                     if litteralIsTrue litteral then Some row else None)
                 |> Table.create None table.Headers
             evaluateWheres t table'
+
+    and fulljoin originTable tableToJoin =
+        let mergedHeaders = originTable.Headers @ tableToJoin.Headers
+
+        let newTableRows =
+            [for originRow in originTable.ContentRows do
+                for rowToJoin in tableToJoin.ContentRows do
+                    originRow @ rowToJoin]
+
+        Table.create None mergedHeaders newTableRows
 
     and joinTables joins table =
         match joins with
@@ -190,6 +206,7 @@ module Interpreter =
             let table = evalSelectQuery select
             let newheaders = table.Headers |> List.map (fun (_,h) -> (alias,h) |> SpecificColumn)
             {table with Headers = newheaders; Alias = alias}
+
 
     let eval query =
         match query with

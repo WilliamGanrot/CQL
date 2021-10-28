@@ -39,7 +39,7 @@ module Table =
             |> List.filter (fun (_,(_,n)) -> n = name)
             |> validateFoundMatchCols (name)
 
-    let getSelectColumns table (cols: Column List) =
+    let getSelectColumns (cols: Column List) table =
 
         let headers =
             [for col in cols do

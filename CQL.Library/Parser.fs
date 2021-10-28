@@ -13,6 +13,7 @@ module ParserDomain =
         | NumericLitteral of float
         | StringLitteral of string
         | BoolLitteral of int
+        | NullLitteral
 
     type ArithmeticExpression<'a> = ArithmeticOpperator * 'a * 'a
     type EqualityExpression<'a> = EqualityOpperator * 'a * 'a
@@ -42,9 +43,12 @@ module ParserDomain =
          | Inner of InnerJoin
          | Left of LeftJoin
          | Full of From
-    and Where = Where of QueryExpression
 
-    and SelectQuery = Column List * From * Join list * Where list
+    and Where = Where of QueryExpression
+    and Direction = Ascending | Decending
+    and Order = SpecificColumn * Direction
+
+    and SelectQuery = Column List * From * Join list * Where list * Order Option
     and CreateQuery = string * From
 
     type Query =
@@ -94,6 +98,11 @@ module Parser =
     let columnExpression = betweenString "'" "'" specificColumn |>> ColumnIdentifier .>> spaces
     let boolExpression = ((stringReturn "true" (BoolLitteral 1)) <|> (stringReturn "false" (BoolLitteral 0))) |>> Litteral
 
+    let desc = stringReturn "desc" Decending
+    let asc = stringReturn "asc" Ascending
+    let direction = desc <|> asc
+    let order = (spaces >>. pstring "order by" .>> spaces) >>. (betweenString "'" "'" specificColumn) .>> spaces1 .>>. direction |>> (fun (a, b) -> Order(a,b))
+
     let selectColumns = between (pstring "'") (pstring "'") (all <|> (specificColumn |>> Specifict))
     let where = pstring "where" >>. spaces >>. pcomparison .>> spaces |>> Where
     let manySelectParameter = 
@@ -121,7 +130,7 @@ module Parser =
     let from = pstring "from" .>> spaces1 >>. fromType .>> spaces 
     let tableName = singleQoutedString .>>. (spaces >>. alias)
 
-    let selectQuery = select .>>. from .>>. joins .>>. wheres .>> spaces |>> fun(((x,y),z),a) -> SelectQuery(x,y,z,a)
+    let selectQuery = select .>>. from .>>. joins .>>. wheres .>>. opt(attempt order) .>> spaces |>> fun((((a,b),c),d),e) -> SelectQuery(a,b,c,d,e)
     let selectQueryWitheof = selectQuery .>> eof 
     let subSelectQuery = ((between (pstring "(") (pstring ")") (selectQuery .>> spaces)) .>> spaces) .>>. alias
 
