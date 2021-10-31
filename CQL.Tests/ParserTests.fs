@@ -32,6 +32,8 @@ open FParsec
 [<InlineData("select '*' from 'people.csv' as 'ta' inner join 'table' as 'p' 'a.w' = 'v' order by 'w' asc top 2")>]
 [<InlineData("select '*' from ( select '*' from (select 'name' from 'table' top 10) )")>]
 [<InlineData("select '*' from (select '*' from 'name.csv' top 20) top 10")>]
+[<InlineData("select '*' from 'file.txt' where 3 = 5 || \"hej\" = 'phrase'")>]
+[<InlineData("select '*' from 'file.txt' as 'f' where 'f.age' = 20 || 'f.gender' = \"female\"")>]
 let ``select query happy cases`` (query) =
 
     match (run Parser.selectQueryWitheof query) with
@@ -60,6 +62,7 @@ let ``select query happy cases`` (query) =
 [<InlineData("select '* from ( select 'wef', 'qqko', 'wef.qq' from (select 'name' from 'table') )")>]
 [<InlineData("select '*' from top 4 'people.csv'")>]
 [<InlineData("select '*' from 'people.csv' top \"wef\"")>]
+[<InlineData("select '*' from 'people.csv' as 'p' where 'p.name' = \"bert\" || ")>]
 let ``select query unhappy cases`` (query) =
 
     match (run Parser.selectQueryWitheof query) with

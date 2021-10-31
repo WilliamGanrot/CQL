@@ -6,6 +6,7 @@ module ParserDomain =
 
     type ArithmeticOpperator = Add | Subtract | Multiply | Divide
     type EqualityOpperator = Equals | NotEquals | GreaterThan | GreaterThanOrEquals | LesserThan | LesserThanOrEquals
+    type LogicalOpperator = And | Or
 
     type SpecificColumn = string Option * string
 
@@ -17,17 +18,20 @@ module ParserDomain =
 
     type ArithmeticExpression<'a> = ArithmeticOpperator * 'a * 'a
     type EqualityExpression<'a> = EqualityOpperator * 'a * 'a
+    type LogicalExpression<'a> = LogicalOpperator * 'a * 'a
 
     and LitteralExpression =
         | Litteral of Litteral
         | ArithmeticExpression of ArithmeticExpression<LitteralExpression>
         | EqualityExpression of EqualityExpression<LitteralExpression>
+        | LogicalExpression of LogicalExpression<LitteralExpression>
 
     and QueryExpression =
         | ColumnIdentifier of SpecificColumn
         | Litteral of Litteral
         | ArithmeticExpression of ArithmeticExpression<QueryExpression>
         | EqualityExpression of EqualityExpression<QueryExpression>
+        | LogicalExpression of LogicalExpression<QueryExpression>
 
     type Column =
         | Specifict of SpecificColumn
@@ -75,11 +79,13 @@ module Parser =
     let fromType, fromTypeRef = createParserForwardedToRef<From, unit>()
     let joinType, joinTypeRef = createParserForwardedToRef<Join, unit>()
 
-    let oppa = OperatorPrecedenceParser<QueryExpression,_,_>()
-    let oppc = OperatorPrecedenceParser<QueryExpression, _, _>()
+    let oppa = OperatorPrecedenceParser<QueryExpression,unit,unit>()
+    let oppc = OperatorPrecedenceParser<QueryExpression, unit, unit>()
+    let oppl = OperatorPrecedenceParser<QueryExpression, unit, unit>()
 
     let parithmetic = oppa.ExpressionParser
     let pcomparison = oppc.ExpressionParser
+    let plogical = oppl.ExpressionParser
 
     let alphastring = many1Chars (anyOf alphabet)
     let manyCharsBetween popen pclose pchar = popen >>? manyCharsTill pchar pclose
@@ -108,7 +114,7 @@ module Parser =
     let order = (spaces >>. pstring "order by" .>> spaces) >>. (betweenString "'" "'" specificColumn) .>> spaces1 .>>. direction |>> Order
 
     let selectColumns = between (pstring "'") (pstring "'") (all <|> (specificColumn |>> Specifict))
-    let where = pstring "where" >>. spaces >>. pcomparison .>> spaces |>> Where
+    let where = pstring "where" >>. spaces >>. plogical .>> spaces |>> Where
     let manySelectParameter = 
         let seperator = pstring "," .>> spaces 
         sepBy1 selectColumns seperator
@@ -116,8 +122,8 @@ module Parser =
     let create = spaces >>. pstring "create" >>. spaces1 >>. singleQoutedString .>> spaces
     let select = spaces >>. pstring "select" >>. spaces1 >>. manySelectParameter .>> spaces1
 
-    let innerjoin = pstring "inner join" >>. spaces1 >>. fromType .>> spaces .>>. pcomparison .>> spaces |>> InnerJoin
-    let leftjoin = pstring "left join" >>. spaces1 >>. fromType .>> spaces .>>. pcomparison .>> spaces |>> LeftJoin
+    let innerjoin = pstring "inner join" >>. spaces1 >>. fromType .>> spaces .>>. plogical .>> spaces |>> InnerJoin
+    let leftjoin = pstring "left join" >>. spaces1 >>. fromType .>> spaces .>>. plogical .>> spaces |>> LeftJoin
     let fulljoin = pstring "full join" >>. spaces1 >>. fromType .>> spaces
 
     let joins = opt(many1 joinType) |>> (fun joinlist ->
@@ -161,7 +167,6 @@ module Parser =
     oppa.AddOperator(InfixOperator("*", spaces, 2, Associativity.Left, fun x y -> ArithmeticExpression(Multiply, x,y)))
     oppa.AddOperator(InfixOperator("/", spaces, 2, Associativity.Left, fun x y -> ArithmeticExpression(Divide, x,y)))
     
-
     oppc.TermParser <- spaces >>. parithmetic .>> spaces
     oppc.AddOperator(InfixOperator("=", spaces, 1, Associativity.Left, fun x y -> EqualityExpression(Equals, x, y)))
     oppc.AddOperator(InfixOperator("<>", spaces, 1, Associativity.Left, fun x y -> EqualityExpression(NotEquals, x, y)))
@@ -169,5 +174,9 @@ module Parser =
     oppc.AddOperator(InfixOperator(">=", spaces, 2, Associativity.Left, fun x y -> EqualityExpression(GreaterThanOrEquals, x, y)))
     oppc.AddOperator(InfixOperator("<", spaces, 2, Associativity.Left, fun x y -> EqualityExpression(LesserThan, x, y)))
     oppc.AddOperator(InfixOperator(">", spaces, 2, Associativity.Left, fun x y -> EqualityExpression(GreaterThan, x, y)))
+
+    oppl.TermParser <- spaces >>. pcomparison .>> spaces
+    oppl.AddOperator(InfixOperator("||", spaces, 1, Associativity.Left, fun x y -> LogicalExpression(Or, x, y)))
+    oppl.AddOperator(InfixOperator("&&", spaces, 1, Associativity.Left, fun x y -> LogicalExpression(And, x, y)))
 
     let parse = spaces >>. queryType
