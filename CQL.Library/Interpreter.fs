@@ -103,6 +103,15 @@ module Interpreter =
             | LesserThanOrEquals, NumericLitteral(l1), NumericLitteral(l2) -> if l1 <= l2 then BoolLitteral 1 else BoolLitteral 0
             | LesserThanOrEquals,_,_ -> failwith "<= is not a valid operator for this type"
 
+        | LitteralExpression.LogicalExpression (opp, e1, e2) ->
+            let l1 = getLitteralFromExpression e1
+            let l2 = getLitteralFromExpression e2
+
+            match opp,l1,l2 with
+            | And, l1, l2 when litteralIsTrue l1 && litteralIsTrue l2 -> BoolLitteral 1
+            | Or, l1, l2 when litteralIsTrue l1 || litteralIsTrue l2 -> BoolLitteral 1
+            | _ -> BoolLitteral 0
+
     let rec queryExpressionToLitteralExpression expr (row:string list) headers =
         match expr with
         | QueryExpression.ColumnIdentifier ci ->
@@ -121,6 +130,11 @@ module Interpreter =
             let q1' = queryExpressionToLitteralExpression q1 row headers
             let q2' = queryExpressionToLitteralExpression q2 row headers
             LitteralExpression.EqualityExpression (opp, q1', q2')
+
+        | QueryExpression.LogicalExpression (opp, q1, q2) ->
+            let q1' = queryExpressionToLitteralExpression q1 row headers
+            let q2' = queryExpressionToLitteralExpression q2 row headers
+            LitteralExpression.LogicalExpression (opp, q1', q2')
 
     let maybeOrder order table =
         match order with
