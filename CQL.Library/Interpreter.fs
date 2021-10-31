@@ -213,7 +213,22 @@ module Interpreter =
                 |> Table.create None fullyJoinedTable.Headers
 
             joinTables t innerjoined
-        | Left _ :: t -> failwith "not implemented"
+        | Left (from, expr):: t ->
+            let leftJoined =
+                let tableToJoin = getTable from
+                [for row in table.ContentRows do
+
+                    let singleRowTable = Table.create None table.Headers [row]
+                    let innerJoined = joinTables [(Inner(from, expr))] singleRowTable
+
+                    if innerJoined.ContentRows.Length > 0 then
+                        yield! innerJoined.ContentRows
+                    else
+                        let emptyCellList = [0..tableToJoin.Headers.Length - 1] |> List.map (fun _ -> "")
+                        row @ emptyCellList ]
+                |> Table.create None (table.Headers @ tableToJoin.Headers)
+                    
+            joinTables t leftJoined
 
     and getTable from : Tabel =
         match from with
