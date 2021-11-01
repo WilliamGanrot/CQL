@@ -192,42 +192,43 @@ module Interpreter =
 
         Table.create None mergedHeaders newTableRows
 
+    and innerJoin table from condition =
+        let fullyJoined = getTable from |> fulljoin table
+        fullyJoined.ContentRows
+        |> List.choose(fun row ->
+
+            let litteral =
+                queryExpressionToLitteralExpression condition row fullyJoined.Headers
+                |> getLitteralFromExpression
+
+            if litteralIsTrue litteral then Some row else None )
+        |> Table.create None fullyJoined.Headers
+
+    and leftJoin table from condition =
+        let tableToJoin = getTable from
+        [for row in table.ContentRows do
+
+            let singleRowTable = Table.create None table.Headers [row]
+            let innerJoined = joinTables [(Inner(from, condition))] singleRowTable
+
+            if innerJoined.ContentRows.Length > 0 then
+                yield! innerJoined.ContentRows
+            else
+                let emptyCellList = [0..tableToJoin.Headers.Length - 1] |> List.map (fun _ -> "")
+                row @ emptyCellList ]
+        |> Table.create None (table.Headers @ tableToJoin.Headers)
+
     and joinTables joins table =
         match joins with
         | [] -> table
         | Full from :: t ->
             let fullyjoined = getTable from |> fulljoin table
             joinTables t fullyjoined
-        | Inner(from,expr) :: t ->
-            let fullyJoinedTable = getTable from |> fulljoin table
-
-            let innerjoined =
-                fullyJoinedTable.ContentRows
-                |> List.choose(fun row ->
-
-                    let litteral =
-                        queryExpressionToLitteralExpression expr row fullyJoinedTable.Headers
-                        |> getLitteralFromExpression
-
-                    if litteralIsTrue litteral then Some row else None )
-                |> Table.create None fullyJoinedTable.Headers
-
+        | Inner(from, condition) :: t ->
+            let innerjoined = innerJoin table from condition
             joinTables t innerjoined
-        | Left (from, expr):: t ->
-            let leftJoined =
-                let tableToJoin = getTable from
-                [for row in table.ContentRows do
-
-                    let singleRowTable = Table.create None table.Headers [row]
-                    let innerJoined = joinTables [(Inner(from, expr))] singleRowTable
-
-                    if innerJoined.ContentRows.Length > 0 then
-                        yield! innerJoined.ContentRows
-                    else
-                        let emptyCellList = [0..tableToJoin.Headers.Length - 1] |> List.map (fun _ -> "")
-                        row @ emptyCellList ]
-                |> Table.create None (table.Headers @ tableToJoin.Headers)
-                    
+        | Left (from, condition):: t ->
+            let leftJoined = leftJoin table from condition
             joinTables t leftJoined
 
     and getTable from : Tabel =
@@ -244,10 +245,9 @@ module Interpreter =
 
     let eval query =
         match query with
-        | Select(cols,from,joins,where, order,top) -> SelectQuery(cols,from,joins,where,order,top) |> evalSelectQuery |> Table.printTable
-        | Create(name, from) ->
-            getTable from |> Table.saveTableAsCsv name |> ignore
-            printfn "table %A saved" name |> ignore
+        | Select selectQuery -> selectQuery |> evalSelectQuery |> Table.printTable
+        | Create(name, from) -> getTable from |> Table.saveTableAsCsv name |> ignore
+
 
             
 

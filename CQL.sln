@@ -5,9 +5,9 @@ VisualStudioVersion = 16.0.31613.86
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "CQL.Tests", "CQL.Tests\CQL.Tests.fsproj", "{13FB2F5C-E49A-44CF-8563-398B9459AEE7}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "CQL.Library", "CQL.Library\CQL.Library.fsproj", "{29DFB687-B4BF-405C-90B9-37130D1EB596}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "CQL.Library", "CQL.Library\CQL.Library.fsproj", "{29DFB687-B4BF-405C-90B9-37130D1EB596}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "CQL.Console", "CQL.Console\CQL.Console.fsproj", "{FD87E810-57E4-4F1D-A154-A78783D5DFA8}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "CQL.Console", "CQL.Console\CQL.Console.fsproj", "{FD87E810-57E4-4F1D-A154-A78783D5DFA8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

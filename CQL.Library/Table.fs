@@ -73,4 +73,5 @@ module Table =
 
     let saveTableAsCsv name table =
         let rows = tableToCsvRows table
-        File.WriteAllLines(name, rows) 
+        File.WriteAllLines(name, rows)
+        printfn "table %A saved" name |> ignore
