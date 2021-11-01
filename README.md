@@ -4,7 +4,7 @@ CQL is a a query language for performing operations on csv files. The language i
 
 
 ### Exampel - select query
-The following query performes an inner join on the files ```person.txt``` and ```adress.txt``` and then filter out the person above 18 which live in Sweden.
+The following query performes an inner join on the files ```person.txt``` and ```adress.txt``` and then filter out the person above 18 which live in Sweden or in Germany. The result is orderd by age and the top 3 rows are selected.
 ```java
 select '*' from 'person.txt' as 'p' 
 inner join 'adress.txt' as 'a' 'a.ownerid' = 'p.userid' 
